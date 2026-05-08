@@ -69,9 +69,9 @@ function TaskModal({ task, onClose, onSave }) {
 
 function TaskCard({ task, onToggle, onEdit, onDelete }) {
   const priorityColor = {
-    low:    'bg-surface-raised text-fg-dim',
-    medium: 'bg-surface-overlay text-fg-muted',
-    high:   'bg-brand-strong text-brand-fg',
+    low:    'bg-surface-raised text-fg-muted',
+    medium: 'bg-caution-subtle text-caution font-medium',
+    high:   'bg-danger-subtle text-danger font-semibold',
   }
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
 
@@ -176,9 +176,18 @@ export default function Tasks() {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="h-20 bg-surface-raised rounded-xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-fg-dim">
-          <CheckCircle2 size={40} className="mx-auto mb-3 opacity-30" />
-          <p>No tasks here</p>
+        <div className="text-center py-16">
+          <CheckCircle2 size={40} className="mx-auto mb-3 text-fg-dim opacity-30" />
+          <p className="font-medium text-fg">
+            {filter === 'completed' ? 'No completed tasks yet'
+             : filter === 'pending' ? "You're all caught up!"
+             : 'No tasks yet'}
+          </p>
+          <p className="text-xs text-fg-dim mt-1">
+            {filter === 'completed' ? 'Completed tasks will appear here'
+             : filter === 'pending' ? 'All your tasks are done'
+             : 'Tap "New Task" to get started'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">

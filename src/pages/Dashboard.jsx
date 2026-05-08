@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckSquare, Users, Mail, Calendar, Bot, AlertCircle, ArrowRight } from 'lucide-react'
+import { CheckSquare, Users, Mail, Calendar, Sparkles, AlertCircle, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import client from '../api/client'
 import { useAuth } from '../context/AuthContext'
@@ -126,7 +126,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={CheckSquare} label="Pending Tasks" value={stats.tasks} />
         <StatCard icon={Users}       label="Contacts"      value={stats.contacts} />
-        <StatCard icon={Mail}        label="Email"         value="Gmail" />
+        <StatCard icon={Mail}        label="Email"         value={null} />
         <StatCard icon={Calendar}    label="Today"         value={todayEvents.length || 'Free'} />
       </div>
 
@@ -185,7 +185,7 @@ export default function Dashboard() {
 
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Bot size={20} className="text-fg-muted" />
+          <Sparkles size={18} className="text-accent" />
           <h2 className="font-semibold">Daily Briefing</h2>
         </div>
         {loading ? (
