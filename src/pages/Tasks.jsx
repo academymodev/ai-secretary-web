@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2, Search } from 'lucide-react'
 import client from '../api/client'
 
 const PRIORITIES = ['low', 'medium', 'high']
@@ -105,6 +105,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
       <button
         onClick={() => !isToggling && onToggle(task)}
         disabled={isToggling}
+        aria-label={task.status === 'completed' ? 'Mark as pending' : 'Mark as complete'}
         className="mt-0.5 shrink-0 text-fg-dim hover:text-fg transition-colors disabled:cursor-wait"
       >
         {isToggling
@@ -127,11 +128,11 @@ function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
       </div>
       <div className="flex gap-1 shrink-0">
         {task.status !== 'completed' && (
-          <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim transition-colors">
+          <button onClick={() => onEdit(task)} aria-label="Edit task" className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim transition-colors">
             <Pencil size={15} />
           </button>
         )}
-        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
+        <button onClick={onDelete} aria-label="Delete task" className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
           <Trash2 size={15} />
         </button>
       </div>
@@ -147,6 +148,7 @@ export default function Tasks() {
   const [filter, setFilter]             = useState('all')
   const [toggling, setToggling]         = useState(new Set())
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [search, setSearch]             = useState('')
 
   const load = async () => {
     setLoadError('')
@@ -180,9 +182,11 @@ export default function Tasks() {
   }
 
   const filtered = tasks.filter((t) => {
-    if (filter === 'pending')   return t.status !== 'completed'
-    if (filter === 'completed') return t.status === 'completed'
-    return true
+    const q = search.toLowerCase()
+    const matchesSearch = !q || t.title.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q)
+    if (filter === 'pending')   return t.status !== 'completed' && matchesSearch
+    if (filter === 'completed') return t.status === 'completed' && matchesSearch
+    return matchesSearch
   })
 
   return (
@@ -195,6 +199,16 @@ export default function Tasks() {
         <button onClick={() => setModal({})} className="btn-primary flex items-center gap-2">
           <Plus size={16} /> New Task
         </button>
+      </div>
+
+      <div className="relative">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-dim pointer-events-none" />
+        <input
+          className="input pl-9"
+          placeholder="Search tasks…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="flex gap-2">

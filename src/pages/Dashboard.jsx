@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import client from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, hint }) {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
@@ -14,6 +14,7 @@ function StatCard({ icon: Icon, label, value }) {
         </div>
       </div>
       <p className="text-2xl font-bold tracking-tight">{value ?? '—'}</p>
+      {value === null && hint && <p className="text-xs text-fg-dim mt-1">{hint}</p>}
     </div>
   )
 }
@@ -126,7 +127,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={CheckSquare} label="Pending Tasks" value={stats.tasks} />
         <StatCard icon={Users}       label="Contacts"      value={stats.contacts} />
-        <StatCard icon={Mail}        label="Email"         value={null} />
+        <StatCard icon={Mail}        label="Email"         value={null} hint="Connect in Settings" />
         <StatCard icon={Calendar}    label="Today"         value={todayEvents.length || 'Free'} />
       </div>
 
