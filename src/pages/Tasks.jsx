@@ -1,8 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react'
 import client from '../api/client'
 
 const PRIORITIES = ['low', 'medium', 'high']
+
+function ConfirmDialog({ message, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="card w-full max-w-sm p-6">
+        <p className="text-sm text-fg mb-5">{message}</p>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="btn-secondary flex-1">Cancel</button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold text-sm bg-danger text-white hover:opacity-90 active:scale-[0.97] transition-all"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function TaskModal({ task, onClose, onSave }) {
   const isEdit = !!task?.id
@@ -14,11 +33,14 @@ function TaskModal({ task, onClose, onSave }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const submittingRef         = useRef(false)
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const submit = async (e) => {
     e.preventDefault()
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError('')
     setLoading(true)
     try {
@@ -28,7 +50,10 @@ function TaskModal({ task, onClose, onSave }) {
       onSave()
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to save task')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+      submittingRef.current = false
+    }
   }
 
   return (
@@ -67,7 +92,7 @@ function TaskModal({ task, onClose, onSave }) {
   )
 }
 
-function TaskCard({ task, onToggle, onEdit, onDelete }) {
+function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
   const priorityColor = {
     low:    'bg-surface-raised text-fg-muted',
     medium: 'bg-caution-subtle text-caution font-medium',
@@ -77,8 +102,15 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 
   return (
     <div className={`card p-4 flex items-start gap-3 ${task.status === 'completed' ? 'opacity-80' : ''}`}>
-      <button onClick={() => onToggle(task)} className="mt-0.5 shrink-0 text-fg-dim hover:text-fg transition-colors">
-        {task.status === 'completed' ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+      <button
+        onClick={() => !isToggling && onToggle(task)}
+        disabled={isToggling}
+        className="mt-0.5 shrink-0 text-fg-dim hover:text-fg transition-colors disabled:cursor-wait"
+      >
+        {isToggling
+          ? <Loader2 size={20} className="animate-spin" />
+          : task.status === 'completed' ? <CheckCircle2 size={20} /> : <Circle size={20} />
+        }
       </button>
       <div className="flex-1 min-w-0">
         <p className={`font-medium text-sm ${task.status === 'completed' ? 'line-through text-fg-dim' : 'text-fg'}`}>{task.title}</p>
@@ -99,7 +131,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
             <Pencil size={15} />
           </button>
         )}
-        <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
+        <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
           <Trash2 size={15} />
         </button>
       </div>
@@ -108,11 +140,13 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 }
 
 export default function Tasks() {
-  const [tasks, setTasks]       = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const [modal, setModal]       = useState(null)
-  const [filter, setFilter]     = useState('all')
+  const [tasks, setTasks]               = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [loadError, setLoadError]       = useState('')
+  const [modal, setModal]               = useState(null)
+  const [filter, setFilter]             = useState('all')
+  const [toggling, setToggling]         = useState(new Set())
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const load = async () => {
     setLoadError('')
@@ -127,15 +161,22 @@ export default function Tasks() {
   useEffect(() => { load() }, [])
 
   const toggle = async (task) => {
+    if (toggling.has(task.id)) return
+    setToggling(prev => new Set([...prev, task.id]))
     const newStatus = task.status === 'completed' ? 'pending' : 'completed'
-    await client.put(`/tasks/${task.id}`, { ...task, status: newStatus })
-    load()
+    try {
+      await client.put(`/tasks/${task.id}`, { ...task, status: newStatus })
+      load()
+    } catch {
+      // leave task in original state on failure
+    } finally {
+      setToggling(prev => { const s = new Set(prev); s.delete(task.id); return s })
+    }
   }
 
-  const del = async (id) => {
-    if (!confirm('Delete this task?')) return
-    await client.delete(`/tasks/${id}`)
-    load()
+  const del = async () => {
+    try { await client.delete(`/tasks/${deleteTarget}`); load() }
+    finally { setDeleteTarget(null) }
   }
 
   const filtered = tasks.filter((t) => {
@@ -191,12 +232,29 @@ export default function Tasks() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((t) => <TaskCard key={t.id} task={t} onToggle={toggle} onEdit={(t) => setModal(t)} onDelete={del} />)}
+          {filtered.map((t) => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              onToggle={toggle}
+              onEdit={(t) => setModal(t)}
+              onDelete={() => setDeleteTarget(t.id)}
+              isToggling={toggling.has(t.id)}
+            />
+          ))}
         </div>
       )}
 
       {modal !== null && (
         <TaskModal task={modal} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message="Delete this task? This cannot be undone."
+          onConfirm={del}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   )

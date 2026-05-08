@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus } from 'lucide-react'
 import client from '../api/client'
 
@@ -14,11 +14,14 @@ function ContactModal({ contact, onClose, onSave }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const submittingRef         = useRef(false)
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const submit = async (e) => {
     e.preventDefault()
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError('')
     setLoading(true)
     try {
@@ -27,7 +30,10 @@ function ContactModal({ contact, onClose, onSave }) {
       onSave()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save contact')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+      submittingRef.current = false
+    }
   }
 
   return (
