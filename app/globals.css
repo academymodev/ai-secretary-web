@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────────
+   Light: warm neutral canvas  |  Dark: near-black with warm undertones
+   Accent: Muted Executive Blue  |  Brand: Sandal (identity moments only)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --bg:              #f4efe7;
+  --bg-subtle:       #ede8dd;
+
+  --surface:         #faf8f4;
+  --surface-raised:  #f4efe7;
+  --surface-overlay: #ece8e0;
+
+  --border:          #e2d8c8;
+  --border-strong:   #c8bba4;
+  --border-focus:    #4872a8;
+  --ring-focus:      rgba(72, 114, 168, 0.14);
+
+  --fg:              #1a1008;
+  --fg-muted:        #6b5e48;
+  --fg-dim:          #a89e90;
+  --fg-inverse:      #f0ece5;
+
+  --brand:           #e8dcc4;
+  --brand-strong:    #1a1008;
+  --brand-fg:        #e8dcc4;
+
+  --accent:          #4872a8;
+  --accent-hover:    #3d6090;
+  --accent-subtle:   #edf2f8;
+  --accent-muted:    #c5d4e8;
+  --accent-fg:       #ffffff;
+
+  --error:           #c73c3c;
+  --error-subtle:    #fdf1f1;
+  --success:         #2d7a55;
+  --success-subtle:  #edf7f2;
+  --warning:         #b56310;
+  --warning-subtle:  #fef5eb;
+
+  /* Motion */
+  --ease-out:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dark {
+  --bg:              #0c0b0a;
+  --bg-subtle:       #111009;
+
+  --surface:         #181614;
+  --surface-raised:  #201e1b;
+  --surface-overlay: #282420;
+
+  --border:          #2c2924;
+  --border-strong:   #3c3830;
+  --border-focus:    #6b9dc4;
+  --ring-focus:      rgba(107, 157, 196, 0.16);
+
+  --fg:              #ede8e0;
+  --fg-muted:        #9a8e82;
+  --fg-dim:          #5c5248;
+  --fg-inverse:      #1a1008;
+
+  --brand:           #e8dcc4;
+  --brand-strong:    #e8dcc4;
+  --brand-fg:        #0c0b0a;
+
+  --accent:          #6b9dc4;
+  --accent-hover:    #82afd0;
+  --accent-subtle:   #18222f;
+  --accent-muted:    #2d4a63;
+  --accent-fg:       #ffffff;
+
+  --error:           #e05656;
+  --error-subtle:    #2a1212;
+  --success:         #4aaa82;
+  --success-subtle:  #0d2a1e;
+  --warning:         #e08840;
+  --warning-subtle:  #2a1a06;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.025em;
+    font-feature-settings: 'cv02', 'cv03', 'cv11';
+  }
+}
+
+/* ─── Components ─────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           font-semibold text-sm tracking-tight
+           px-5 py-2.5 rounded-full
+           transition-all duration-200 ease-out
+           active:scale-[0.96]
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+    background-color: var(--brand-strong);
+    color:            var(--brand-fg);
+    box-shadow:       0 1px 2px rgba(0,0,0,0.12);
+  }
+  .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           font-semibold text-sm tracking-tight
+           px-5 py-2.5 rounded-full
+           transition-all duration-200 ease-out
+           active:scale-[0.96];
+    background-color: var(--surface-raised);
+    color:            var(--fg);
+    border:           1px solid var(--border-strong);
+  }
+  .btn-secondary:hover { background-color: var(--surface-overlay); }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           font-medium text-sm px-3 py-1.5 rounded-xl
+           transition-all duration-150 ease-out active:scale-[0.96];
+    color: var(--fg-muted);
+  }
+  .btn-ghost:hover { background-color: var(--surface-raised); color: var(--fg); }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-3.5 py-2.5 rounded-xl text-sm
+           transition-all duration-200 outline-none;
+    background-color: var(--surface);
+    border:           1.5px solid var(--border-strong);
+    color:            var(--fg);
+  }
+  .input::placeholder { color: var(--fg-dim); }
+  .input:focus {
+    border-color: var(--border-focus);
+    box-shadow:   0 0 0 3px var(--ring-focus);
+  }
+  .input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Cards ── */
+  .card {
+    @apply rounded-2xl;
+    background-color: var(--surface);
+    border:           1px solid var(--border);
+    box-shadow:       0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.03);
+    transition:       box-shadow 0.25s var(--ease-out),
+                      border-color 0.2s ease;
+  }
+  .card-hover:hover {
+    box-shadow:   0 2px 8px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
+    border-color: var(--border-strong);
+  }
+
+  /* ── Labels ── */
+  .label {
+    @apply block text-xs font-medium mb-1.5;
+    color:          var(--fg-muted);
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Section header (Settings, etc) ── */
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-widest mb-4;
+    color:          var(--fg-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Badges ── */
+  .badge         { @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .badge-accent  { @apply badge; background: var(--accent-subtle);   color: var(--accent);   }
+  .badge-success { @apply badge; background: var(--success-subtle);  color: var(--success);  }
+  .badge-warning { @apply badge; background: var(--warning-subtle);  color: var(--warning);  }
+  .badge-danger  { @apply badge; background: var(--error-subtle);    color: var(--error);    }
+  .badge-muted   { @apply badge; background: var(--surface-overlay); color: var(--fg-muted); }
+
+  /* ── Divider ── */
+  .divider {
+    height:     1px;
+    background: var(--border);
+  }
+
+  /* ── Page fade-in ── */
+  .page-enter {
+    animation: pageEnter 0.22s var(--ease-out) both;
+  }
+
+  /* ── Overlay backdrop ── */
+  .overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    background: rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.18s ease both;
+  }
+
+  /* ── Modal ── */
+  .modal {
+    @apply card w-full p-6;
+    box-shadow: 0 32px 80px -8px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.06);
+    animation:  modalEnter 0.22s var(--ease-out) both;
+  }
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.97) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position:  800px 0; }
+}
+
+@keyframes typingPulse {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+  40%           { transform: scale(1.0); opacity: 1.0; }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-raised) 25%,
+      var(--surface-overlay) 50%,
+      var(--surface-raised) 75%
+    );
+    background-size: 800px 100%;
+    animation: shimmer 1.6s infinite;
+  }
+
+  .typing-dot {
+    @apply w-2 h-2 rounded-full;
+    background: var(--fg-dim);
+    animation: typingPulse 1.4s infinite ease-in-out;
+  }
+
+  .text-balance { text-wrap: balance; }
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background:    var(--border-strong);
+  border-radius: 9999px;
+  opacity:       0.6;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--fg-dim); }
+
+/* ─── Focus-visible ──────────────────────────────────────────────────────── */
+:focus-visible {
+  outline:        2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
