@@ -7,14 +7,15 @@ function Message({ msg }) {
   const isUser = msg.role === 'user'
   return (
     <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-        isUser ? 'bg-[var(--brand-strong)]' : 'bg-[var(--accent-subtle)]'
-      }`}>
-        {isUser
-          ? <User     size={12} className="text-[var(--brand-fg)]" />
-          : <Bot size={11} className="text-[var(--accent)]" />
-        }
-      </div>
+      {isUser ? (
+        <div className="w-7 h-7 rounded-full bg-[var(--brand-strong)] flex items-center justify-center shrink-0 mt-0.5">
+          <User size={14} className="text-[var(--brand-fg)]" />
+        </div>
+      ) : (
+        <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center shrink-0 mt-0.5">
+          <Bot size={15} className="text-[var(--accent)]" />
+        </div>
+      )}
       <div className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
         isUser
           ? 'bg-[var(--brand-strong)] text-[var(--brand-fg)] rounded-tr-md'
@@ -138,8 +139,8 @@ export default function Chat() {
         )}
         {loading && (
           <div className="flex gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center mt-0.5">
-              <Bot size={11} className="text-[var(--accent)]" />
+            <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center mt-0.5 shrink-0">
+              <Bot size={15} className="text-[var(--accent)]" />
             </div>
             <div className="px-3.5 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-tl-md flex items-center gap-1">
               {[0,1,2].map(i => (
