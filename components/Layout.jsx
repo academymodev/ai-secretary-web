@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, CheckSquare, Users, Bot,
+  LayoutDashboard, CheckSquare, Users, MessageSquare,
   Mail, Calendar, Settings, LogOut, Menu, Bell, Search, X
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -14,7 +14,7 @@ const NAV = [
   { href: '/tasks',     label: 'Tasks',     icon: CheckSquare },
   { href: '/reminders', label: 'Reminders', icon: Bell },
   { href: '/contacts',  label: 'Contacts',  icon: Users },
-  { href: '/chat',      label: 'Chat',      icon: Bot },
+  { href: '/chat',      label: 'Chat',      icon: MessageSquare },
   { href: '/email',     label: 'Email',     icon: Mail },
   { href: '/calendar',  label: 'Calendar',  icon: Calendar },
   { href: '/settings',  label: 'Settings',  icon: Settings },
