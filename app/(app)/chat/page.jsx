@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, Bot, User, Trash2 } from 'lucide-react'
+import { Send, User, Trash2 } from 'lucide-react'
 import client from '@/lib/api'
 
 function Message({ msg }) {
@@ -12,8 +12,8 @@ function Message({ msg }) {
           <User size={14} className="text-[var(--brand-fg)]" />
         </div>
       ) : (
-        <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center shrink-0 mt-0.5">
-          <Bot size={15} className="text-[var(--accent)]" />
+        <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0 mt-0.5">
+          <img src="/logo192.png" alt="AI" className="w-full h-full object-cover" />
         </div>
       )}
       <div className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
@@ -126,8 +126,8 @@ export default function Chat() {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center">
-              <Bot size={22} className="text-[var(--accent)]" />
+            <div className="w-12 h-12 rounded-2xl overflow-hidden">
+              <img src="/logo192.png" alt="AI" className="w-full h-full object-cover" />
             </div>
             <div className="text-center">
               <p className="font-medium text-sm text-[var(--fg)]">Ask your secretary</p>
@@ -139,8 +139,8 @@ export default function Chat() {
         )}
         {loading && (
           <div className="flex gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center mt-0.5 shrink-0">
-              <Bot size={15} className="text-[var(--accent)]" />
+            <div className="w-7 h-7 rounded-lg overflow-hidden mt-0.5 shrink-0">
+              <img src="/logo192.png" alt="AI" className="w-full h-full object-cover" />
             </div>
             <div className="px-3.5 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-tl-md flex items-center gap-1">
               {[0,1,2].map(i => (
