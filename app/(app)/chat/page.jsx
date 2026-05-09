@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, Sparkles, User, Trash2 } from 'lucide-react'
+import { Send, Bot, User, Trash2 } from 'lucide-react'
 import client from '@/lib/api'
 
 function Message({ msg }) {
@@ -12,7 +12,7 @@ function Message({ msg }) {
       }`}>
         {isUser
           ? <User     size={12} className="text-[var(--brand-fg)]" />
-          : <Sparkles size={11} className="text-[var(--accent)]" />
+          : <Bot size={11} className="text-[var(--accent)]" />
         }
       </div>
       <div className={`max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
@@ -126,7 +126,7 @@ export default function Chat() {
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
             <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center">
-              <Sparkles size={22} className="text-[var(--accent)]" />
+              <Bot size={22} className="text-[var(--accent)]" />
             </div>
             <div className="text-center">
               <p className="font-medium text-sm text-[var(--fg)]">Ask your secretary</p>
@@ -139,7 +139,7 @@ export default function Chat() {
         {loading && (
           <div className="flex gap-2.5">
             <div className="w-6 h-6 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center mt-0.5">
-              <Sparkles size={11} className="text-[var(--accent)]" />
+              <Bot size={11} className="text-[var(--accent)]" />
             </div>
             <div className="px-3.5 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-tl-md flex items-center gap-1">
               {[0,1,2].map(i => (
