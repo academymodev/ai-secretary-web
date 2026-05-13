@@ -283,3 +283,17 @@
   outline-offset: 2px;
 }
 :focus:not(:focus-visible) { outline: none; }
+
+/* ─── Chat markdown rendering ────────────────────────────────────────────── */
+.prose-chat { font-size: 0.9rem; line-height: 1.6; }
+.prose-chat p  { margin: 0 0 0.5em; }
+.prose-chat p:last-child { margin-bottom: 0; }
+.prose-chat strong { font-weight: 600; }
+.prose-chat a  { text-decoration: underline; opacity: 0.9; }
+.prose-chat ul, .prose-chat ol { margin: 0.3em 0 0.5em 1.2em; }
+.prose-chat li { margin-bottom: 0.2em; }
+.prose-chat code { font-family: monospace; font-size: 0.85em; background: rgba(0,0,0,0.15); padding: 1px 4px; border-radius: 3px; }
+.prose-chat table { border-collapse: collapse; font-size: 0.82em; width: 100%; margin: 6px 0; }
+.prose-chat th, .prose-chat td { padding: 5px 10px; border: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.prose-chat th { font-weight: 600; opacity: 0.8; }
+.prose-chat div { overflow-x: auto; }

@@ -2,48 +2,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send, User, Trash2 } from 'lucide-react'
 import client from '@/lib/api'
+import { marked } from 'marked'
+import DOMPurify from 'isomorphic-dompurify'
+
+marked.setOptions({ breaks: true, gfm: true })
 
 function renderMarkdown(text) {
-  const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const inline = s => s
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;opacity:0.9">$1</a>')
-
-  const lines = text.split('\n')
-  const parts = []
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i]
-    if (line.trim().startsWith('|') && line.trim().endsWith('|') && line.includes('|', 1)) {
-      const tableLines = []
-      while (i < lines.length && lines[i].trim().startsWith('|')) {
-        tableLines.push(lines[i])
-        i++
-      }
-      const rows = tableLines.map(l => l.split('|').slice(1, -1).map(c => c.trim()))
-      const sepIdx = rows.findIndex(r => r.every(c => /^[\-:\s]+$/.test(c)))
-      const thStyle = 'padding:5px 10px;border:1px solid var(--border);text-align:left;font-weight:600;white-space:nowrap;opacity:0.75'
-      const tdStyle = 'padding:5px 10px;border:1px solid var(--border);text-align:left;white-space:nowrap'
-      let tHtml = '<div style="overflow-x:auto;margin:6px 0"><table style="border-collapse:collapse;font-size:0.82em">'
-      rows.forEach((row, ri) => {
-        if (ri === sepIdx) return
-        const isHead = sepIdx > 0 && ri < sepIdx
-        const tag = isHead ? 'th' : 'td'
-        const s = isHead ? thStyle : tdStyle
-        tHtml += '<tr>' + row.map(c => `<${tag} style="${s}">${inline(escape(c))}</${tag}>`).join('') + '</tr>'
-      })
-      tHtml += '</table></div>'
-      parts.push(tHtml)
-    } else {
-      parts.push(inline(escape(line)))
-      i++
-    }
-  }
-
-  const html = parts.join('<br/>')
-  return <span dangerouslySetInnerHTML={{ __html: html }} />
+  const raw  = marked.parse(text)
+  const safe = DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS: ['p','br','strong','em','ul','ol','li','a','table','thead','tbody','tr','th','td','div','span','h1','h2','h3','h4','code','pre'],
+    ALLOWED_ATTR: ['href','target','rel','style'],
+    ALLOW_DATA_ATTR: false,
+  })
+  return <div className="prose-chat" dangerouslySetInnerHTML={{ __html: safe }} />
 }
 
 function Message({ msg }) {
