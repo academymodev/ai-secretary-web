@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Mail, Send, RefreshCw, ChevronDown, ChevronUp, Inbox, Sparkles } from 'lucide-react'
-import client from '@/lib/api'
+import { useEffect, useRef, useState } from 'react'
+import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles } from 'lucide-react'
+import client, { BASE_URL } from '@/lib/api'
 
 function ComposeModal({ onClose, onSent, contacts }) {
   const [form, setForm]        = useState({ to: '', subject: '', body: '' })
@@ -152,13 +152,17 @@ function EmailCard({ email }) {
 }
 
 export default function Email() {
-  const [emails, setEmails]         = useState([])
-  const [contacts, setContacts]     = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [compose, setCompose]       = useState(false)
+  const [emails, setEmails]             = useState([])
+  const [contacts, setContacts]         = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [compose, setCompose]           = useState(false)
   const [needsConnect, setNeedsConnect] = useState(false)
+  const lastLoadAt                      = useRef(0)
 
-  const load = async () => {
+  const load = async (force = false) => {
+    // Debounce focus-triggered reloads — email inbox is slow (AI summaries)
+    if (!force && Date.now() - lastLoadAt.current < 2 * 60 * 1000) return
+    lastLoadAt.current = Date.now()
     setLoading(true)
     try {
       const [emailRes, contactRes] = await Promise.allSettled([
@@ -174,10 +178,16 @@ export default function Email() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load(true)
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    const interval = setInterval(() => load(true), 5 * 60 * 1000)
+    return () => { window.removeEventListener('focus', onFocus); clearInterval(interval) }
+  }, [])
 
   const token      = typeof window !== 'undefined' ? localStorage.getItem('token') : ''
-  const connectUrl = `https://pers-ruxy.onrender.com/auth/google?token=${token}`
+  const connectUrl = `${BASE_URL}/auth/google?token=${token}`
 
   if (needsConnect) return (
     <div className="space-y-5">
@@ -211,9 +221,6 @@ export default function Email() {
           <p className="text-sm text-[var(--fg-muted)] mt-0.5">{emails.length} messages</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={load} className="btn-secondary">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
           <button onClick={() => setCompose(true)} className="btn-primary">
             <Send size={14} /> Compose
           </button>
