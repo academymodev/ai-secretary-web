@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Calendar, RefreshCw, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import client from '@/lib/api'
 
 function EventModal({ onClose, onSave }) {
@@ -210,7 +210,11 @@ export default function CalendarPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 5 * 60 * 1000) // refresh every 5 minutes
+    return () => clearInterval(interval)
+  }, [])
 
   const del = async (id) => {
     if (!confirm('Delete this event?')) return
@@ -257,7 +261,6 @@ export default function CalendarPage() {
           <p className="text-sm text-fg-muted">{listLabel}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={load} className="btn-secondary flex items-center gap-2"><RefreshCw size={15} /> Sync</button>
           <button onClick={() => setModal(true)} className="btn-primary flex items-center gap-2"><Plus size={16} /> New Event</button>
         </div>
       </div>
