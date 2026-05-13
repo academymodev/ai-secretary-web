@@ -159,8 +159,17 @@ export default function Contacts() {
 
   const load = async () => {
     try {
-      const { data } = await client.get('/contacts?limit=1000')
-      setContacts(data.all || data.contacts || [])
+      const PAGE = 500
+      let all = [], offset = 0, total = Infinity
+      while (all.length < total) {
+        const { data } = await client.get(`/contacts?limit=${PAGE}&offset=${offset}`)
+        const page = data.all || data.contacts || []
+        all = [...all, ...page]
+        total = data.total ?? all.length
+        offset += page.length
+        if (page.length < PAGE) break
+      }
+      setContacts(all)
     } finally { setLoading(false) }
   }
 
