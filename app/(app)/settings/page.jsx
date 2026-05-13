@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save, Smartphone, Monitor as MonitorIcon } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useRouter } from 'next/navigation'
@@ -44,6 +44,17 @@ export default function SettingsPage() {
   const [showLogout, setShowLogout]           = useState(false)
   const [googleConnected, setGoogleConnected] = useState(user?.google_connected || false)
   const [checking, setChecking]               = useState(false)
+  const [devices, setDevices]                 = useState([])
+  const [devicesLoading, setDevicesLoading]   = useState(true)
+  const [revokingId, setRevokingId]           = useState(null)
+
+  const currentDeviceId = useMemo(() => {
+    try {
+      const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!t) return null
+      return JSON.parse(atob(t.split('.')[1])).did || null
+    } catch { return null }
+  }, [])
 
   const [profile, setProfile]             = useState({ name: user?.name || '', briefing_time: '06:55', language: 'english', mode: 'professional' })
   const [savingProfile, setSavingProfile] = useState(false)
@@ -63,6 +74,13 @@ export default function SettingsPage() {
       setGoogleConnected(data.connected)
     } catch {} finally { setChecking(false) }
   }
+
+  useEffect(() => {
+    client.get('/auth/devices')
+      .then(({ data }) => setDevices(data.devices || []))
+      .catch(() => {})
+      .finally(() => setDevicesLoading(false))
+  }, [])
 
   useEffect(() => {
     checkGoogleStatus()
@@ -94,6 +112,19 @@ export default function SettingsPage() {
   }
 
   const handleLogout = () => { logout(); router.push('/login') }
+
+  const revokeDevice = async (id) => {
+    setRevokingId(id)
+    try {
+      await client.delete(`/auth/devices/${id}`)
+      setDevices(d => d.filter(x => x.id !== id))
+      if (id === currentDeviceId) handleLogout()
+    } catch {} finally { setRevokingId(null) }
+  }
+
+  const deviceIcon = (type) => type === 'web'
+    ? <MonitorIcon size={14} className="text-[var(--fg-muted)]" />
+    : <Smartphone size={14} className="text-[var(--fg-muted)]" />
 
   return (
     <div className="space-y-4">
@@ -199,6 +230,42 @@ export default function SettingsPage() {
           )}
           <p className="text-xs text-[var(--fg-dim)] px-1">After connecting, refresh to update status.</p>
         </div>
+      </Section>
+
+      <Section title="Active Sessions">
+        {devicesLoading ? (
+          <p className="text-sm text-[var(--fg-muted)]">Loading…</p>
+        ) : devices.length === 0 ? (
+          <p className="text-sm text-[var(--fg-muted)]">No tracked sessions. Sign out and back in to register this device.</p>
+        ) : (
+          <div className="divide-y divide-[var(--border)]">
+            {devices.map(d => (
+              <div key={d.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {deviceIcon(d.type)}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate">
+                      {d.name}
+                      {d.id === currentDeviceId && (
+                        <span className="ml-2 text-xs font-normal text-[var(--accent)]">current</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      Last active {new Date(d.last_active).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => revokeDevice(d.id)}
+                  disabled={revokingId === d.id}
+                  className="text-xs text-[var(--error)] hover:underline disabled:opacity-40 ml-3 shrink-0"
+                >
+                  {revokingId === d.id ? 'Revoking…' : 'Revoke'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section title="About">

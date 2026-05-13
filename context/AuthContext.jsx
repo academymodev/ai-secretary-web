@@ -83,8 +83,10 @@ export function AuthProvider({ children }) {
     setLoading(true)
     setLoginHint('')
     try {
-      const { data } = await postWithRetry('/auth/login', { email, password }, () =>
-        setLoginHint('Server is waking up, please wait (~30 seconds)…')
+      const { data } = await postWithRetry(
+        '/auth/login',
+        { email, password, deviceName: 'Web Browser', deviceType: 'web' },
+        () => setLoginHint('Server is waking up, please wait (~30 seconds)…')
       )
       saveSession(data.token, { name: data.user.name, email: data.user.email })
       return { ok: true }
