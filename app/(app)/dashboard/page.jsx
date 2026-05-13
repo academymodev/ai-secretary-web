@@ -95,7 +95,7 @@ export default function Dashboard() {
         const [brief, tasks, contacts, events, gStatus] = await Promise.allSettled([
           client.get('/briefing/today'),
           client.get('/tasks'),
-          client.get('/contacts?limit=1'),
+          client.get('/contacts'),
           client.get('/calendar/events'),
           client.get('/auth/google/status'),
         ])
@@ -108,7 +108,8 @@ export default function Dashboard() {
           setOverdueTasks(all.filter(t => t.deadline && t.deadline < todayIST && t.status !== 'completed').slice(0, 3))
         }
         if (contacts.status === 'fulfilled') {
-          const total = contacts.value.data?.total ?? 0
+          const d     = contacts.value.data
+          const total = d?.total ?? d?.all?.length ?? d?.contacts?.length ?? 0
           setStats(s => ({ ...s, contacts: total }))
           setHasContacts(total > 0)
         }
