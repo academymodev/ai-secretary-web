@@ -212,8 +212,10 @@ export default function CalendarPage() {
 
   useEffect(() => {
     load()
-    const interval = setInterval(load, 5 * 60 * 1000) // refresh every 5 minutes
-    return () => clearInterval(interval)
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    const interval = setInterval(load, 5 * 60 * 1000)
+    return () => { window.removeEventListener('focus', onFocus); clearInterval(interval) }
   }, [])
 
   const del = async (id) => {
