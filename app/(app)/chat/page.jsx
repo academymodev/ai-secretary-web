@@ -3,6 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Send, User, Trash2 } from 'lucide-react'
 import client from '@/lib/api'
 
+function renderMarkdown(text) {
+  const html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;opacity:0.9">$1</a>')
+    .replace(/\n/g, '<br/>')
+  return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
+
 function Message({ msg }) {
   const isUser = msg.role === 'user'
   return (
@@ -21,7 +31,7 @@ function Message({ msg }) {
           ? 'bg-[var(--brand-strong)] text-[var(--brand-fg)] rounded-tr-md'
           : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] rounded-tl-md'
       }`}>
-        {msg.content}
+        {isUser ? msg.content : renderMarkdown(msg.content)}
       </div>
     </div>
   )
