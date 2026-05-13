@@ -159,7 +159,7 @@ export default function Contacts() {
 
   const load = async () => {
     try {
-      const { data } = await client.get('/contacts?limit=500')
+      const { data } = await client.get('/contacts?limit=1000')
       setContacts(data.all || data.contacts || [])
     } finally { setLoading(false) }
   }
