@@ -26,12 +26,12 @@ function StatCard({ icon: Icon, label, value, sub, accent }) {
   )
 }
 
-function OnboardingChecklist({ hasTasks, hasContacts }) {
+function OnboardingChecklist({ hasTasks, hasContacts, googleConnected }) {
   const steps = [
-    { done: true,        label: 'Account created',                 link: null },
-    { done: hasContacts, label: 'Add your first contact',          link: '/contacts' },
-    { done: hasTasks,    label: 'Create your first task',          link: '/tasks' },
-    { done: false,       label: 'Connect Google Calendar & Gmail', link: '/settings' },
+    { done: true,            label: 'Account created',                 link: null },
+    { done: hasContacts,     label: 'Add your first contact',          link: '/contacts' },
+    { done: hasTasks,        label: 'Create your first task',          link: '/tasks' },
+    { done: googleConnected, label: 'Connect Google Calendar & Gmail', link: '/settings' },
   ]
   const completed = steps.filter(s => s.done).length
   const pct       = Math.round((completed / steps.length) * 100)
@@ -84,18 +84,20 @@ export default function Dashboard() {
   const [stats, setStats]               = useState({})
   const [todayEvents, setTodayEvents]   = useState([])
   const [overdueTasks, setOverdueTasks] = useState([])
-  const [hasTasks, setHasTasks]         = useState(false)
-  const [hasContacts, setHasContacts]   = useState(false)
+  const [hasTasks, setHasTasks]           = useState(false)
+  const [hasContacts, setHasContacts]     = useState(false)
+  const [googleConnected, setGoogleConn]  = useState(false)
 
   useEffect(() => {
     const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
     const load = async () => {
       try {
-        const [brief, tasks, contacts, events] = await Promise.allSettled([
+        const [brief, tasks, contacts, events, gStatus] = await Promise.allSettled([
           client.get('/briefing/today'),
           client.get('/tasks'),
-          client.get('/contacts'),
+          client.get('/contacts?limit=1'),
           client.get('/calendar/events'),
+          client.get('/auth/google/status'),
         ])
         if (brief.status === 'fulfilled') setBriefing(brief.value.data)
         if (tasks.status === 'fulfilled') {
@@ -106,9 +108,12 @@ export default function Dashboard() {
           setOverdueTasks(all.filter(t => t.deadline && t.deadline < todayIST && t.status !== 'completed').slice(0, 3))
         }
         if (contacts.status === 'fulfilled') {
-          const all = contacts.value.data?.all || contacts.value.data?.contacts || []
-          setStats(s => ({ ...s, contacts: all.length }))
-          setHasContacts(all.length > 0)
+          const total = contacts.value.data?.total ?? 0
+          setStats(s => ({ ...s, contacts: total }))
+          setHasContacts(total > 0)
+        }
+        if (gStatus.status === 'fulfilled') {
+          setGoogleConn(gStatus.value.data?.connected === true)
         }
         if (events.status === 'fulfilled') {
           const all    = events.value.data?.events || []
@@ -138,7 +143,7 @@ export default function Dashboard() {
         <p className="text-sm text-[var(--fg-muted)] mt-0.5">Your daily overview</p>
       </div>
 
-      {!loading && <OnboardingChecklist hasTasks={hasTasks} hasContacts={hasContacts} />}
+      {!loading && <OnboardingChecklist hasTasks={hasTasks} hasContacts={hasContacts} googleConnected={googleConnected} />}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard icon={CheckSquare} label="Pending"  value={stats.tasks}    sub="tasks" />
