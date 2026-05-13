@@ -118,21 +118,10 @@ export default function SettingsPage() {
             <input className="input" value={profile.name}
               onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
           </RowField>
-          <div className="grid grid-cols-2 gap-3">
-            <RowField label="Briefing Time">
-              <input className="input" type="time" value={profile.briefing_time}
-                onChange={e => setProfile(p => ({ ...p, briefing_time: e.target.value }))} />
-            </RowField>
-            <RowField label="Language">
-              <select className="input" value={profile.language}
-                onChange={e => setProfile(p => ({ ...p, language: e.target.value }))}>
-                <option value="english">English</option>
-                <option value="hindi">Hindi</option>
-                <option value="tamil">Tamil</option>
-                <option value="telugu">Telugu</option>
-              </select>
-            </RowField>
-          </div>
+          <RowField label="Briefing Time">
+            <input className="input" type="time" value={profile.briefing_time}
+              onChange={e => setProfile(p => ({ ...p, briefing_time: e.target.value }))} />
+          </RowField>
           <RowField label="AI Mode">
             <select className="input" value={profile.mode}
               onChange={e => setProfile(p => ({ ...p, mode: e.target.value }))}>
