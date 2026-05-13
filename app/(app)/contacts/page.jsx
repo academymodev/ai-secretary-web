@@ -1,7 +1,11 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus } from 'lucide-react'
 import client from '@/lib/api'
+
+const Portal = ({ children }) =>
+  typeof document !== 'undefined' ? createPortal(children, document.body) : null
 
 function ContactModal({ contact, onClose, onSave }) {
   const isEdit = !!contact?.id
@@ -38,8 +42,9 @@ function ContactModal({ contact, onClose, onSave }) {
   }
 
   return (
-    <div className="overlay">
-      <div className="modal w-full max-w-md">
+    <Portal>
+      <div className="overlay">
+        <div className="modal w-full max-w-md">
         <h2 className="text-base font-semibold mb-5 text-[var(--fg)] tracking-tight">
           {isEdit ? 'Edit Contact' : 'New Contact'}
         </h2>
@@ -80,14 +85,16 @@ function ContactModal({ contact, onClose, onSave }) {
             <button type="submit" disabled={loading} className="btn-primary flex-1">{loading ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </Portal>
   )
 }
 
 function ContactDetail({ contact, onClose, onEdit, onDelete }) {
   return (
-    <div className="overlay items-end sm:items-center">
+    <Portal>
+      <div className="overlay items-end sm:items-center">
       <div className="modal w-full max-w-md">
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3.5">
@@ -145,6 +152,7 @@ function ContactDetail({ contact, onClose, onEdit, onDelete }) {
         </div>
       </div>
     </div>
+    </Portal>
   )
 }
 
