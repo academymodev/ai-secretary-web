@@ -26,6 +26,15 @@ const nextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },
+  async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pers-ruxy.onrender.com'
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/:path*`,
+      },
+    ]
+  },
 }
 
 export default nextConfig
