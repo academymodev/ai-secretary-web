@@ -99,7 +99,7 @@ export default function Chat() {
       })
       setMessages(m => [...m, { role: 'assistant', content: data.reply }])
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.message || 'Sorry, something went wrong.'
+      const msg = err.response?.data?.error || 'Sorry, something went wrong.'
       setMessages(m => [...m, { role: 'assistant', content: msg }])
     } finally { setLoading(false) }
   }
