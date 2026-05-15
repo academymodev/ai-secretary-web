@@ -3,7 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2, Search, ListChecks } from 'lucide-react'
 import client from '@/lib/api'
 
-const PRIORITIES = ['low', 'medium', 'high']
+const PRIORITIES  = ['low', 'medium', 'high']
+const CATEGORIES  = ['work', 'personal', 'health', 'finance', 'family', 'learning']
+const CAT_COLORS  = {
+  work:     'bg-blue-500/10 text-blue-500',
+  personal: 'bg-purple-500/10 text-purple-500',
+  health:   'bg-green-500/10 text-green-500',
+  finance:  'bg-yellow-500/10 text-yellow-600',
+  family:   'bg-pink-500/10 text-pink-500',
+  learning: 'bg-orange-500/10 text-orange-500',
+}
 
 const PRIORITY_META = {
   high:   { label: 'High',   dot: 'bg-[var(--error)]',   text: 'text-[var(--error)]' },
@@ -41,6 +50,7 @@ function TaskModal({ task, onClose, onSave }) {
     notes:    task?.notes    || '',
     priority: task?.priority || 'medium',
     deadline: task?.deadline ? task.deadline.slice(0, 10) : '',
+    category: task?.category || '',
   })
   const [loading, setLoading]  = useState(false)
   const [error, setError]      = useState('')
@@ -97,6 +107,36 @@ function TaskModal({ task, onClose, onSave }) {
               <input className="input" type="date" value={form.deadline} onChange={set('deadline')} />
             </div>
           </div>
+          <div>
+            <label className="label">Category</label>
+            <div className="flex gap-1.5 flex-wrap mt-1">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, category: '' }))}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${
+                  !form.category
+                    ? 'border-[var(--border-focus)] bg-[var(--surface-overlay)] text-[var(--fg)]'
+                    : 'border-[var(--border)] text-[var(--fg-dim)]'
+                }`}
+              >
+                None
+              </button>
+              {CATEGORIES.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, category: f.category === c ? '' : c }))}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize transition-all border ${
+                    form.category === c
+                      ? `border-transparent ${CAT_COLORS[c]}`
+                      : 'border-[var(--border)] text-[var(--fg-dim)]'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={loading} className="btn-primary flex-1">
@@ -113,6 +153,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
   const p         = PRIORITY_META[task.priority] || PRIORITY_META.medium
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
   const isDone    = task.status === 'completed'
+  const catColor  = task.category ? (CAT_COLORS[task.category] || 'bg-[var(--surface-raised)] text-[var(--fg-dim)]') : null
 
   return (
     <div className={`card flex items-start gap-0 overflow-hidden transition-all duration-200 ${isDone ? 'opacity-55' : 'card-hover'}`}>
@@ -141,12 +182,17 @@ function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
           {task.notes && (
             <p className="text-xs text-[var(--fg-dim)] mt-0.5 truncate">{task.notes}</p>
           )}
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className={`text-[11px] font-medium ${p.text}`}>{p.label}</span>
             {task.deadline && (
               <span className={`text-[11px] flex items-center gap-1 ${isOverdue ? 'text-[var(--error)]' : 'text-[var(--fg-dim)]'}`}>
                 {isOverdue && <AlertCircle size={11} />}
                 {new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+            {catColor && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${catColor}`}>
+                {task.category}
               </span>
             )}
           </div>
@@ -185,6 +231,7 @@ export default function Tasks() {
   const [toggling, setToggling]         = useState(new Set())
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [search, setSearch]             = useState('')
+  const [catFilter, setCatFilter]       = useState('')
 
   const load = async () => {
     setLoadError('')
@@ -230,12 +277,15 @@ export default function Tasks() {
   }
 
   const filtered = tasks.filter(t => {
-    const q            = search.toLowerCase()
+    const q             = search.toLowerCase()
     const matchesSearch = !q || t.title.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q)
-    if (filter === 'pending')   return t.status !== 'completed' && matchesSearch
-    if (filter === 'completed') return t.status === 'completed' && matchesSearch
-    return matchesSearch
+    const matchesCat    = !catFilter || t.category === catFilter
+    if (filter === 'pending')   return t.status !== 'completed' && matchesSearch && matchesCat
+    if (filter === 'completed') return t.status === 'completed' && matchesSearch && matchesCat
+    return matchesSearch && matchesCat
   })
+
+  const usedCategories = [...new Set(tasks.map(t => t.category).filter(Boolean))]
 
   const pendingCount = tasks.filter(t => t.status !== 'completed').length
 
@@ -264,6 +314,29 @@ export default function Tasks() {
           onChange={e => setSearch(e.target.value)}
         />
       </div>
+
+      {/* Category filter pills */}
+      {usedCategories.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {catFilter && (
+            <button
+              onClick={() => setCatFilter('')}
+              className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--brand-strong)] text-[var(--brand-fg)] flex items-center gap-1"
+            >
+              {catFilter} ×
+            </button>
+          )}
+          {usedCategories.filter(c => c !== catFilter).map(c => (
+            <button
+              key={c}
+              onClick={() => setCatFilter(c)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize transition-all ${CAT_COLORS[c] || 'bg-[var(--surface-raised)] text-[var(--fg-muted)]'}`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filters + bulk actions */}
       <div className="flex items-center gap-1.5 flex-wrap">

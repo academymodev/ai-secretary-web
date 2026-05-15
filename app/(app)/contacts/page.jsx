@@ -24,6 +24,7 @@ function ContactModal({ contact, onClose, onSave }) {
     company: contact?.company || '',
     notes:   contact?.notes   || '',
     is_vip:  contact?.is_vip  || false,
+    tags:    contact?.tags    || '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
@@ -78,6 +79,11 @@ function ContactModal({ contact, onClose, onSave }) {
             <div className="col-span-2">
               <label className="label">Notes</label>
               <textarea className="input resize-none" rows={3} value={form.notes} onChange={set('notes')} placeholder="Optional notes…" />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Tags</label>
+              <input className="input" value={form.tags} onChange={set('tags')} placeholder="work, investor, friend…" />
+              <p className="text-[10px] text-[var(--fg-dim)] mt-1">Comma-separated</p>
             </div>
             <div className="col-span-2 flex items-center gap-2.5">
               <input id="vip" type="checkbox" checked={form.is_vip}
@@ -183,6 +189,15 @@ function ContactDetail({ contact, onClose, onEdit, onDelete, onInteractionLogged
             <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--surface-raised)]">
               <Building2 size={15} className="text-[var(--fg-dim)] shrink-0" />
               <span className="text-sm text-[var(--fg)]">{contact.company}</span>
+            </div>
+          )}
+          {contact.tags && (
+            <div className="flex flex-wrap gap-1.5 px-1">
+              {contact.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                <span key={tag} className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--surface-overlay)] text-[var(--fg-muted)] border border-[var(--border)]">
+                  {tag}
+                </span>
+              ))}
             </div>
           )}
           {cleanNotes && (
@@ -292,6 +307,7 @@ export default function Contacts() {
   const [modal, setModal]       = useState(null)
   const [detail, setDetail]     = useState(null)
   const [vipOnly, setVipOnly]   = useState(false)
+  const [tagFilter, setTagFilter] = useState('')
 
   const load = async () => {
     try {
@@ -324,11 +340,14 @@ export default function Contacts() {
     load()
   }
 
-  const vip      = contacts.filter(c => c.is_vip)
-  const filtered = contacts.filter(c =>
-    (!vipOnly || c.is_vip) &&
-    (!search || `${c.name} ${c.email} ${c.company}`.toLowerCase().includes(search.toLowerCase()))
-  )
+  const vip           = contacts.filter(c => c.is_vip)
+  const allTags       = [...new Set(contacts.flatMap(c => c.tags ? c.tags.split(',').map(t => t.trim()).filter(Boolean) : []))]
+  const filtered      = contacts.filter(c => {
+    const matchesSearch = !search || `${c.name} ${c.email} ${c.company}`.toLowerCase().includes(search.toLowerCase())
+    const matchesVip    = !vipOnly || c.is_vip
+    const matchesTag    = !tagFilter || (c.tags || '').split(',').map(t => t.trim()).includes(tagFilter)
+    return matchesSearch && matchesVip && matchesTag
+  })
 
   return (
     <div className="space-y-5">
@@ -369,6 +388,29 @@ export default function Contacts() {
         )}
       </div>
 
+      {/* Tag filter pills */}
+      {allTags.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {tagFilter && (
+            <button
+              onClick={() => setTagFilter('')}
+              className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--brand-strong)] text-[var(--brand-fg)] flex items-center gap-1"
+            >
+              {tagFilter} ×
+            </button>
+          )}
+          {allTags.filter(t => t !== tagFilter).map(tag => (
+            <button
+              key={tag}
+              onClick={() => setTagFilter(tag)}
+              className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--surface-overlay)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-raised)] transition-all capitalize"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="space-y-2">
@@ -399,6 +441,15 @@ export default function Contacts() {
                 <p className="text-xs text-[var(--fg-muted)] truncate">
                   {[c.email, c.company].filter(Boolean).join(' · ')}
                 </p>
+                {c.tags && (
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {c.tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 3).map(tag => (
+                      <span key={tag} className="px-1.5 py-0 rounded-full text-[10px] font-medium bg-[var(--surface-overlay)] text-[var(--fg-dim)] border border-[var(--border)] capitalize">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               {c.phone && <span className="text-xs text-[var(--fg-dim)] shrink-0 hidden sm:block">{c.phone}</span>}
             </div>
