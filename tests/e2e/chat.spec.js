@@ -47,8 +47,9 @@ test('send message and receive response', async ({ page }) => {
 
   test('enter key sends message', async ({ page }) => {
     const input = page.getByPlaceholder(/ask|message/i)
-    await input.fill('Test')
+    const uniqueMsg = `EnterKeyTest${Date.now()}`
+    await input.fill(uniqueMsg)
     await input.press('Enter')
-    await expect(page.getByText('Test')).toBeVisible()
+    await expect(page.getByText(uniqueMsg)).toBeVisible()
   })
 })

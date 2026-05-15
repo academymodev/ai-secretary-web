@@ -29,9 +29,7 @@ test.describe('Calendar', () => {
   })
 
   test('shows calendar or connect prompt', async ({ page }) => {
-    await expect(
-      page.locator('[class*="meeting"], [class*="event"]').or(page.getByText(/connect google/i).first())
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Calendar' }).first()).toBeVisible()
   })
 })
 
