@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2, Search } from 'lucide-react'
+import { Plus, Trash2, Pencil, CheckCircle2, Circle, AlertCircle, Loader2, Search, ListChecks } from 'lucide-react'
 import client from '@/lib/api'
 
 const PRIORITIES = ['low', 'medium', 'high']
@@ -216,6 +216,19 @@ export default function Tasks() {
     finally { setDeleteTarget(null) }
   }
 
+  const completeAllVisible = async () => {
+    const ids = filtered.filter(t => t.status !== 'completed').map(t => t.id)
+    if (!ids.length) return
+    await client.post('/tasks/bulk/complete', { ids }).catch(() => {})
+    load()
+  }
+
+  const deleteAllCompleted = async () => {
+    if (!confirm('Delete all completed tasks?')) return
+    await client.delete('/tasks/bulk/completed').catch(() => {})
+    load()
+  }
+
   const filtered = tasks.filter(t => {
     const q            = search.toLowerCase()
     const matchesSearch = !q || t.title.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q)
@@ -252,8 +265,8 @@ export default function Tasks() {
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-1.5">
+      {/* Filters + bulk actions */}
+      <div className="flex items-center gap-1.5 flex-wrap">
         {['all', 'pending', 'completed'].map(f => (
           <button
             key={f}
@@ -267,6 +280,22 @@ export default function Tasks() {
             {f}
           </button>
         ))}
+        {filtered.some(t => t.status !== 'completed') && (
+          <button
+            onClick={completeAllVisible}
+            className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--surface-raised)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-overlay)] transition-all"
+          >
+            <ListChecks size={12} /> Complete all
+          </button>
+        )}
+        {tasks.some(t => t.status === 'completed') && (
+          <button
+            onClick={deleteAllCompleted}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--error)] bg-[var(--error-subtle)] hover:opacity-80 transition-all"
+          >
+            <Trash2 size={12} /> Clear done
+          </button>
+        )}
       </div>
 
       {/* Error */}

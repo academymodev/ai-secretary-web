@@ -68,6 +68,14 @@ function EmailCard({ email, onDelete }) {
   const urgent  = email.urgency === 'urgent'
   const msgId   = email.gmail_message_id || email.id
 
+  const toggleExpand = () => {
+    const next = !expanded
+    setExpanded(next)
+    if (next && !isRead && msgId) {
+      client.patch(`/email/${msgId}/read`).catch(() => {})
+    }
+  }
+
   const generateReply = async () => {
     setDrafting(true)
     setReplyError('')
@@ -108,7 +116,7 @@ function EmailCard({ email, onDelete }) {
 
   return (
     <div className={`card transition-all duration-200 overflow-hidden ${!urgent ? 'card-hover' : ''} ${urgent ? 'border-l-2 border-l-[var(--fg)]' : ''}`}>
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-4">
+      <button onClick={toggleExpand} className="w-full text-left p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className={`text-sm ${!isRead ? 'font-semibold' : 'font-medium'} text-[var(--fg)]`}>

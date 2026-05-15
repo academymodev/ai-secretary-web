@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus } from 'lucide-react'
+import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus, Clock, PhoneCall, Video, MessageSquare, CalendarCheck } from 'lucide-react'
 import client from '@/lib/api'
 
 const Portal = ({ children }) =>
@@ -99,11 +99,48 @@ function ContactModal({ contact, onClose, onSave }) {
   )
 }
 
-function ContactDetail({ contact, onClose, onEdit, onDelete }) {
+const INTERACTION_TYPES = [
+  { value: 'call',    label: 'Call',    Icon: PhoneCall     },
+  { value: 'meeting', label: 'Meeting', Icon: CalendarCheck },
+  { value: 'video',   label: 'Video',   Icon: Video         },
+  { value: 'message', label: 'Message', Icon: MessageSquare },
+]
+
+function parseInteractions(notes) {
+  if (!notes) return { cleanNotes: '', interactions: [] }
+  const interactions = []
+  const logRe = /\[I:(\d{4}-\d{2}-\d{2})\|([^\]]+)\]([^\[]*)/g
+  let m
+  while ((m = logRe.exec(notes)) !== null) {
+    interactions.push({ date: m[1], type: m[2], note: m[3].trim() })
+  }
+  const cleanNotes = notes.replace(/\[I:[^\]]+\][^\[]*/g, '').trim()
+  return { cleanNotes, interactions: interactions.reverse() }
+}
+
+function ContactDetail({ contact, onClose, onEdit, onDelete, onInteractionLogged }) {
+  const { cleanNotes, interactions } = parseInteractions(contact.notes)
+  const [logOpen, setLogOpen]   = useState(false)
+  const [logForm, setLogForm]   = useState({ type: 'call', notes: '', date: new Date().toISOString().slice(0, 10) })
+  const [logging, setLogging]   = useState(false)
+
+  const submitLog = async (e) => {
+    e.preventDefault()
+    setLogging(true)
+    try {
+      await client.post(`/contacts/${contact.id}/interactions`, logForm)
+      setLogOpen(false)
+      setLogForm({ type: 'call', notes: '', date: new Date().toISOString().slice(0, 10) })
+      onInteractionLogged()
+    } catch {} finally { setLogging(false) }
+  }
+
+  const typeMap = Object.fromEntries(INTERACTION_TYPES.map(t => [t.value, t]))
+
   return (
     <Portal>
       <div className="overlay items-end sm:items-center">
-      <div className="modal w-full max-w-md">
+      <div className="modal w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-[var(--brand-strong)] text-[var(--brand-fg)] flex items-center justify-center text-lg font-bold shrink-0">
@@ -122,7 +159,7 @@ function ContactDetail({ contact, onClose, onEdit, onDelete }) {
           </button>
         </div>
 
-        <div className="space-y-2 mb-5">
+        <div className="space-y-2 mb-4">
           {contact.email && (
             <a href={`mailto:${contact.email}`} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--surface-overlay)] transition-colors group">
               <Mail size={15} className="text-[var(--fg-dim)] shrink-0" />
@@ -148,10 +185,86 @@ function ContactDetail({ contact, onClose, onEdit, onDelete }) {
               <span className="text-sm text-[var(--fg)]">{contact.company}</span>
             </div>
           )}
-          {contact.notes && (
+          {cleanNotes && (
             <div className="flex items-start gap-3 p-3 rounded-xl bg-[var(--surface-raised)]">
               <FileText size={15} className="text-[var(--fg-dim)] shrink-0 mt-0.5" />
-              <span className="text-sm text-[var(--fg)] whitespace-pre-line">{contact.notes}</span>
+              <span className="text-sm text-[var(--fg)] whitespace-pre-line">{cleanNotes}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Interaction log */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-[var(--fg-dim)] uppercase tracking-wider">Interactions</p>
+            <button
+              onClick={() => setLogOpen(o => !o)}
+              className="text-xs text-[var(--accent)] hover:underline flex items-center gap-1"
+            >
+              <Plus size={11} /> Log
+            </button>
+          </div>
+
+          {logOpen && (
+            <form onSubmit={submitLog} className="mb-3 p-3 rounded-xl bg-[var(--surface-raised)] space-y-2.5">
+              <div className="flex gap-2">
+                {INTERACTION_TYPES.map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setLogForm(f => ({ ...f, type: value }))}
+                    className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] font-semibold transition-all border ${
+                      logForm.type === value
+                        ? 'border-[var(--border-focus)] bg-[var(--surface-overlay)] text-[var(--fg)]'
+                        : 'border-[var(--border)] text-[var(--fg-dim)]'
+                    }`}
+                  >
+                    <Icon size={13} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label text-[10px]">Date</label>
+                  <input className="input text-xs py-1.5" type="date" value={logForm.date}
+                    onChange={e => setLogForm(f => ({ ...f, date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label text-[10px]">Notes</label>
+                  <input className="input text-xs py-1.5" placeholder="Optional…" value={logForm.notes}
+                    onChange={e => setLogForm(f => ({ ...f, notes: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setLogOpen(false)} className="btn-secondary text-xs py-1.5 flex-1">Cancel</button>
+                <button type="submit" disabled={logging} className="btn-primary text-xs py-1.5 flex-1">
+                  {logging ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {interactions.length === 0 ? (
+            <p className="text-xs text-[var(--fg-dim)] italic">No interactions logged yet</p>
+          ) : (
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {interactions.map((log, i) => {
+                const meta = typeMap[log.type] || { Icon: Clock, label: log.type }
+                const Icon = meta.Icon
+                return (
+                  <div key={i} className="flex items-start gap-2.5 text-xs">
+                    <div className="w-6 h-6 rounded-lg bg-[var(--surface-raised)] flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon size={11} className="text-[var(--fg-muted)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-[var(--fg)] capitalize">{meta.label}</span>
+                      {log.note && <span className="text-[var(--fg-muted)]"> · {log.note}</span>}
+                      <p className="text-[10px] text-[var(--fg-dim)]">{log.date}</p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -299,6 +412,11 @@ export default function Contacts() {
           onClose={() => setDetail(null)}
           onEdit={() => { setModal(detail); setDetail(null) }}
           onDelete={del}
+          onInteractionLogged={async () => {
+            await load()
+            const { data } = await client.get(`/contacts/${detail.id}`).catch(() => ({ data: null }))
+            if (data?.contact) setDetail(data.contact)
+          }}
         />
       )}
       {modal !== null && (

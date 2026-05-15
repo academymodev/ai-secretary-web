@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, User, Trash2, Mic, MicOff } from 'lucide-react'
+import { Send, User, Trash2, Mic, MicOff, Search, X } from 'lucide-react'
 import client from '@/lib/api'
 import { marked } from 'marked'
 import DOMPurify from 'isomorphic-dompurify'
@@ -72,8 +72,13 @@ export default function Chat() {
   const [showClear, setShowClear]     = useState(false)
   const [recording, setRecording]     = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState(null)
+  const [searching, setSearching]     = useState(false)
+  const [showSearch, setShowSearch]   = useState(false)
   const bottomRef                     = useRef(null)
   const inputRef                      = useRef(null)
+  const searchTimerRef                = useRef(null)
   const mediaRecorderRef              = useRef(null)
   const chunksRef                     = useRef([])
 
@@ -113,6 +118,21 @@ export default function Chat() {
     setMessages([])
     setShowClear(false)
   }
+
+  const handleSearch = (q) => {
+    setSearchQuery(q)
+    clearTimeout(searchTimerRef.current)
+    if (!q.trim()) { setSearchResults(null); return }
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const { data } = await client.get(`/chat/history/search?q=${encodeURIComponent(q.trim())}`)
+        setSearchResults(data.results || [])
+      } catch { setSearchResults([]) } finally { setSearching(false) }
+    }, 300)
+  }
+
+  const closeSearch = () => { setShowSearch(false); setSearchQuery(''); setSearchResults(null) }
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) return
@@ -159,19 +179,66 @@ export default function Chat() {
           <h1 className="text-2xl font-bold tracking-tight text-[var(--fg)]">Chat</h1>
           <p className="text-sm text-[var(--fg-muted)]">AI-powered assistant</p>
         </div>
-        {messages.length > 0 && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setShowClear(true)}
-            className="btn-ghost text-xs text-[var(--fg-dim)] hover:text-[var(--error)]"
+            onClick={() => setShowSearch(s => !s)}
+            className={`btn-ghost text-xs ${showSearch ? 'text-[var(--fg)]' : 'text-[var(--fg-dim)]'} hover:text-[var(--fg)]`}
           >
-            <Trash2 size={13} /> Clear
+            <Search size={14} />
           </button>
-        )}
+          {messages.length > 0 && (
+            <button
+              onClick={() => setShowClear(true)}
+              className="btn-ghost text-xs text-[var(--fg-dim)] hover:text-[var(--error)]"
+            >
+              <Trash2 size={13} /> Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Messages */}
+      {/* Search bar */}
+      {showSearch && (
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fg-dim)] pointer-events-none" />
+          <input
+            className="input pl-9 pr-9 text-sm"
+            placeholder="Search chat history…"
+            value={searchQuery}
+            onChange={e => handleSearch(e.target.value)}
+            autoFocus
+          />
+          {searchQuery && (
+            <button onClick={closeSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg-dim)] hover:text-[var(--fg)]">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Messages / search results */}
       <div className="flex-1 overflow-y-auto card p-4 space-y-4 mb-3">
-        {histLoading ? (
+        {showSearch && searchQuery ? (
+          searching ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex gap-1">{[0,1,2].map(i => <span key={i} className="typing-dot" style={{ animationDelay: `${i*0.18}s` }} />)}</div>
+            </div>
+          ) : !searchResults?.length ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <Search size={28} className="text-[var(--fg-dim)] opacity-30" />
+              <p className="text-sm text-[var(--fg-dim)]">No messages found</p>
+            </div>
+          ) : (
+            searchResults.map((m, i) => (
+              <div key={m.id || i} className="space-y-1">
+                <span className="text-[10px] text-[var(--fg-dim)]">
+                  {new Date(m.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+                <Message msg={m} />
+              </div>
+            ))
+          )
+        ) : histLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex gap-1">
               {[0,1,2].map(i => (
@@ -192,7 +259,7 @@ export default function Chat() {
         ) : (
           messages.map((m, i) => <Message key={i} msg={m} />)
         )}
-        {loading && (
+        {!showSearch && loading && (
           <div className="flex gap-2.5">
             <div className="w-7 h-7 rounded-lg overflow-hidden mt-0.5 shrink-0">
               <img src="/logo192.png" alt="AI" className="w-full h-full object-cover" />
