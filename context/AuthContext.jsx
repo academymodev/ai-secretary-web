@@ -98,13 +98,32 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const signup = async (name, email, password) => {
+  const sendSignupOtp = async (name, email, password) => {
     setLoading(true)
     setLoginHint('')
     try {
-      await postWithRetry('/auth/signup', { name, email, password }, () =>
+      await postWithRetry('/auth/send-signup-otp', { name, email, password }, () =>
         setLoginHint('Server is waking up, please wait (~30 seconds)…')
       )
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: apiError(e, 'Unable to reach server. Please try again.') }
+    } finally {
+      setLoading(false)
+      setLoginHint('')
+    }
+  }
+
+  const signup = async (name, email, password, otp) => {
+    setLoading(true)
+    setLoginHint('')
+    try {
+      const { data } = await postWithRetry('/auth/signup', { name, email, password, otp }, () =>
+        setLoginHint('Server is waking up, please wait (~30 seconds)…')
+      )
+      if (otp && data.token) {
+        saveSession(data.token, { name: data.user.name, email: data.user.email })
+      }
       return { ok: true }
     } catch (e) {
       return { ok: false, error: apiError(e, 'Unable to reach server. Please try again.') }
@@ -122,7 +141,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, initialized, loading, loginHint, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, initialized, loading, loginHint, login, sendSignupOtp, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )
