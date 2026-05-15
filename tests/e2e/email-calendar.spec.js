@@ -1,10 +1,9 @@
 const { test, expect } = require('@playwright/test')
-const { login, TEST_PASSWORD } = require('./helpers/auth')
+const { TEST_PASSWORD } = require('./helpers/auth')
 
 test.describe('Email', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
   test.beforeEach(async ({ page }) => {
-    await login(page)
     await page.goto('/email')
   })
 
@@ -22,7 +21,6 @@ test.describe('Email', () => {
 test.describe('Calendar', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
   test.beforeEach(async ({ page }) => {
-    await login(page)
     await page.goto('/calendar')
   })
 
@@ -31,9 +29,9 @@ test.describe('Calendar', () => {
   })
 
   test('shows calendar or connect prompt', async ({ page }) => {
-    const hasMeetings = await page.locator('[class*="meeting"], [class*="event"]').count() > 0
-    const hasConnect  = await page.getByText(/connect|google|no meetings|empty/i).isVisible()
-    expect(hasMeetings || hasConnect).toBeTruthy()
+    await expect(
+      page.locator('[class*="meeting"], [class*="event"]').or(page.getByText(/connect google/i).first())
+    ).toBeVisible()
   })
 })
 
@@ -41,7 +39,6 @@ test.describe('Reminders', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
 
   test('reminders page loads', async ({ page }) => {
-    await login(page)
     await page.goto('/reminders')
     await expect(page.getByRole('heading', { name: /reminder/i })).toBeVisible()
   })

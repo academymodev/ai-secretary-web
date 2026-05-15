@@ -179,6 +179,7 @@ export default function Chat() {
         <button
           onClick={send}
           disabled={loading || !input.trim()}
+          aria-label="Send"
           className="btn-primary px-4 disabled:opacity-30"
         >
           <Send size={15} />

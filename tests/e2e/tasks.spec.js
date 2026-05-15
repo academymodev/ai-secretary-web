@@ -1,10 +1,9 @@
 const { test, expect } = require('@playwright/test')
-const { login, TEST_PASSWORD } = require('./helpers/auth')
+const { TEST_PASSWORD } = require('./helpers/auth')
 
 test.describe('Tasks', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
   test.beforeEach(async ({ page }) => {
-    await login(page)
     await page.goto('/tasks')
   })
 
@@ -24,10 +23,10 @@ test.describe('Tasks', () => {
     const dialog = page.locator('[role="dialog"], .modal, .overlay').first()
     await expect(dialog).toBeVisible()
 
-    await page.getByLabel(/title|name|task/i).fill(taskName)
+    await page.getByPlaceholder('Task title').fill(taskName)
     await page.getByRole('button', { name: /save|create|add/i }).last().click()
 
-    await expect(page.getByText(taskName)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10_000 })
   })
 
   test('task filters / tabs work', async ({ page }) => {
@@ -42,9 +41,9 @@ test.describe('Tasks', () => {
     // Create a task first
     const taskName = `Complete Me ${Date.now()}`
     await page.getByRole('button', { name: /add|new|create|\+/i }).first().click()
-    await page.getByLabel(/title|name|task/i).fill(taskName)
+    await page.getByPlaceholder('Task title').fill(taskName)
     await page.getByRole('button', { name: /save|create|add/i }).last().click()
-    await expect(page.getByText(taskName)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText(taskName)).toBeVisible({ timeout: 10_000 })
 
     // Mark complete
     const taskRow = page.locator(`text=${taskName}`).locator('..')

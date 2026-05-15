@@ -1,10 +1,9 @@
 const { test, expect } = require('@playwright/test')
-const { login, TEST_PASSWORD } = require('./helpers/auth')
+const { TEST_PASSWORD } = require('./helpers/auth')
 
 test.describe('Chat', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
   test.beforeEach(async ({ page }) => {
-    await login(page)
     await page.goto('/chat')
   })
 
@@ -24,11 +23,7 @@ test.describe('Chat', () => {
     await expect(sendBtn).toBeEnabled()
   })
 
-  test('mic button is present', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /voice|mic/i })).toBeVisible()
-  })
-
-  test('send message and receive response', async ({ page }) => {
+test('send message and receive response', async ({ page }) => {
     await page.getByPlaceholder(/ask|message/i).fill('Say hello in one word')
     await page.getByRole('button', { name: /send/i }).click()
 

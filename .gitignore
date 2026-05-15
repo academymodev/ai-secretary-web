@@ -5,3 +5,6 @@ dist
 .DS_Store
 .vercel
 .next
+playwright-report/
+test-results/
+tests/e2e/auth.json

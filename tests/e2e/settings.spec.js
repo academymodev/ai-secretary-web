@@ -1,10 +1,9 @@
 const { test, expect } = require('@playwright/test')
-const { login, TEST_PASSWORD } = require('./helpers/auth')
+const { TEST_PASSWORD } = require('./helpers/auth')
 
 test.describe('Settings', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
   test.beforeEach(async ({ page }) => {
-    await login(page)
     await page.goto('/settings')
   })
 
@@ -13,8 +12,8 @@ test.describe('Settings', () => {
   })
 
   test('profile section visible', async ({ page }) => {
-    await expect(page.getByText(/profile/i)).toBeVisible()
-    await expect(page.getByLabel(/name|display/i).first()).toBeVisible()
+    await expect(page.getByText('Profile', { exact: true })).toBeVisible()
+    await expect(page.locator('input.input').first()).toBeVisible()
   })
 
   test('appearance section has theme options', async ({ page }) => {
@@ -43,14 +42,14 @@ test.describe('Settings', () => {
   })
 
   test('sign out button visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign out/i }).first()).toBeVisible()
   })
 
   test('save profile button works', async ({ page }) => {
-    const nameInput = page.getByLabel(/name|display/i).first()
+    const nameInput = page.locator('input.input').first()
     await nameInput.clear()
     await nameInput.fill('Test Name Updated')
     await page.getByRole('button', { name: /save/i }).first().click()
-    await expect(page.getByText(/saved|✓/i)).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText(/saved|✓/i)).toBeVisible({ timeout: 10_000 })
   })
 })

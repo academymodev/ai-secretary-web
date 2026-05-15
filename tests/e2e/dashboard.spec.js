@@ -1,18 +1,16 @@
 const { test, expect } = require('@playwright/test')
-const { login, TEST_PASSWORD } = require('./helpers/auth')
+const { TEST_PASSWORD } = require('./helpers/auth')
 
 test.describe('Dashboard', () => {
   test.skip(!TEST_PASSWORD, 'TEST_USER_PASSWORD not set')
-  test.beforeEach(async ({ page }) => { await login(page) })
+  test.beforeEach(async ({ page }) => { await page.goto('/dashboard') })
 
   test('dashboard page loads', async ({ page }) => {
-    await page.goto('/dashboard')
-    await expect(page.getByRole('heading', { name: /dashboard|briefing|today/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /daily briefing/i })).toBeVisible()
   })
 
   test('briefing section visible', async ({ page }) => {
-    await page.goto('/dashboard')
-    await expect(page.getByText(/briefing|today/i)).toBeVisible()
+    await expect(page.getByText('Daily Briefing')).toBeVisible()
   })
 
   test('navigation sidebar has all main links', async ({ page }) => {

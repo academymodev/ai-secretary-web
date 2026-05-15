@@ -78,7 +78,8 @@ test.describe('Auth — login flow', () => {
   test('logout returns to login page', async ({ page }) => {
     await login(page)
     await page.goto('/settings')
-    await page.getByRole('button', { name: /sign out/i }).click()
+    // Two 'sign out' buttons exist (sidebar icon + settings button); last() targets the settings one
+    await page.getByRole('button', { name: /sign out/i }).last().click()
     await page.getByRole('button', { name: /sign out/i }).last().click()
     await expect(page).toHaveURL(/login/, { timeout: 10_000 })
   })
