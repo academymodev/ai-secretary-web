@@ -1,10 +1,17 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save, Download, Trash2 } from 'lucide-react'
+import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save, Download, Trash2, CalendarDays, Mail, ListTodo, Users } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useRouter } from 'next/navigation'
 import client from '@/lib/api'
+
+const BRIEFING_SECTIONS = [
+  { key: 'meetings',  label: 'Meetings',   icon: CalendarDays },
+  { key: 'tasks',     label: 'Tasks',      icon: ListTodo     },
+  { key: 'emails',    label: 'Emails',     icon: Mail         },
+  { key: 'followups', label: 'Follow-ups', icon: Users        },
+]
 
 function Section({ title, children }) {
   return (
@@ -50,6 +57,10 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileSaved, setProfileSaved]   = useState(false)
   const [profileError, setProfileError]   = useState('')
+  const [briefingSections, setBriefingSections] = useState(['meetings','tasks','emails','followups'])
+  const [calendars, setCalendars]               = useState([])
+  const [selectedCalIds, setSelectedCalIds]     = useState([])
+  const [loadingCals, setLoadingCals]           = useState(false)
 
   const apiBase   = process.env.NODE_ENV === 'development'
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
@@ -65,6 +76,27 @@ export default function SettingsPage() {
     } catch {} finally { setChecking(false) }
   }
 
+  const loadCalendars = async () => {
+    setLoadingCals(true)
+    try {
+      const { data } = await client.get('/calendar/list')
+      setCalendars(data.calendars || [])
+      setSelectedCalIds(data.selectedIds || [])
+    } catch {} finally { setLoadingCals(false) }
+  }
+
+  const toggleCalendar = (id) => {
+    setSelectedCalIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const toggleBriefingSection = (key) => {
+    setBriefingSections(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    )
+  }
+
   useEffect(() => {
     checkGoogleStatus()
     const onFocus = () => checkGoogleStatus()
@@ -77,7 +109,10 @@ export default function SettingsPage() {
         language:      u.language      || 'english',
         mode:          u.mode          || 'professional',
       })
+      if (u.briefing_sections) setBriefingSections(u.briefing_sections.split(',').filter(Boolean))
+      if (u.calendar_ids)      setSelectedCalIds(u.calendar_ids.split(',').filter(Boolean))
     }).catch(() => {})
+    loadCalendars()
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
@@ -86,7 +121,11 @@ export default function SettingsPage() {
     setProfileError('')
     setProfileSaved(false)
     try {
-      await client.put('/auth/profile', profile)
+      await client.put('/auth/profile', {
+        ...profile,
+        briefing_sections: briefingSections.join(','),
+        calendar_ids:      selectedCalIds.join(','),
+      })
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 2500)
     } catch (err) {
@@ -192,6 +231,74 @@ export default function SettingsPage() {
           ))}
         </div>
       </Section>
+
+      <Section title="Morning Briefing">
+        <div className="space-y-2">
+          <p className="text-xs text-[var(--fg-muted)] mb-3">Choose what's included in your daily briefing.</p>
+          {BRIEFING_SECTIONS.map(({ key, label, icon: Icon }) => {
+            const active = briefingSections.includes(key)
+            return (
+              <button
+                key={key}
+                onClick={() => toggleBriefingSection(key)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
+                  active
+                    ? 'border-[var(--border-focus)] bg-[var(--surface-overlay)]'
+                    : 'border-[var(--border)] opacity-60'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-[var(--fg)]">
+                  <Icon size={14} className={active ? 'text-[var(--accent)]' : 'text-[var(--fg-dim)]'} />
+                  {label}
+                </span>
+                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                  active ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border-strong)]'
+                }`}>
+                  {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
+      {calendars.length > 0 && (
+        <Section title="Calendars">
+          <div className="space-y-2">
+            <p className="text-xs text-[var(--fg-muted)] mb-3">Select which Google Calendars to sync events from.</p>
+            {loadingCals ? (
+              <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-10 rounded-xl skeleton" />)}</div>
+            ) : calendars.map(cal => {
+              const selected = selectedCalIds.includes(cal.id) || (selectedCalIds.length === 0 && cal.primary)
+              return (
+                <button
+                  key={cal.id}
+                  onClick={() => toggleCalendar(cal.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
+                    selected
+                      ? 'border-[var(--border-focus)] bg-[var(--surface-overlay)]'
+                      : 'border-[var(--border)] opacity-60'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-[var(--fg)] min-w-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: cal.backgroundColor || 'var(--accent)' }}
+                    />
+                    <span className="truncate">{cal.summary}</span>
+                    {cal.primary && <span className="badge badge-muted text-[10px] shrink-0">Primary</span>}
+                  </span>
+                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                    selected ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border-strong)]'
+                  }`}>
+                    {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </Section>
+      )}
 
       <Section title="Integrations">
         <div className="space-y-3">

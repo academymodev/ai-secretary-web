@@ -1,25 +1,40 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles, Trash2, Search, X } from 'lucide-react'
+import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles, Trash2, Search, X, Clock, Paperclip, Calendar } from 'lucide-react'
 import client, { BASE_URL } from '@/lib/api'
 
 function ComposeModal({ onClose, onSent, contacts }) {
-  const [form, setForm]        = useState({ to: '', subject: '', body: '' })
-  const [loading, setLoading]  = useState(false)
-  const [error, setError]      = useState('')
+  const [form, setForm]          = useState({ to: '', subject: '', body: '' })
+  const [loading, setLoading]    = useState(false)
+  const [scheduling, setScheduling] = useState(false)
+  const [sendAt, setSendAt]      = useState('')
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [error, setError]        = useState('')
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
   const submit = async (e) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
-    try {
-      await client.post('/email/send', form)
-      onSent()
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send email')
-    } finally { setLoading(false) }
+    if (showSchedule && sendAt) {
+      setScheduling(true)
+      try {
+        await client.post('/email/schedule', { ...form, send_at: new Date(sendAt).toISOString() })
+        onSent()
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to schedule email')
+      } finally { setScheduling(false) }
+    } else {
+      setLoading(true)
+      try {
+        await client.post('/email/send', form)
+        onSent()
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to send email')
+      } finally { setLoading(false) }
+    }
   }
+
+  const minDateTime = new Date(Date.now() + 60000).toISOString().slice(0, 16)
 
   return (
     <div className="overlay items-end sm:items-center">
@@ -40,10 +55,36 @@ function ComposeModal({ onClose, onSent, contacts }) {
             <label className="label">Message</label>
             <textarea className="input resize-none" rows={6} value={form.body} onChange={set('body')} required />
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSchedule(s => !s)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                showSchedule
+                  ? 'border-[var(--border-focus)] bg-[var(--surface-overlay)] text-[var(--fg)]'
+                  : 'border-[var(--border)] text-[var(--fg-muted)]'
+              }`}
+            >
+              <Clock size={12} /> Send later
+            </button>
+            {showSchedule && (
+              <input
+                className="input flex-1 text-sm py-1.5"
+                type="datetime-local"
+                min={minDateTime}
+                value={sendAt}
+                onChange={e => setSendAt(e.target.value)}
+                required={showSchedule}
+              />
+            )}
+          </div>
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={loading} className="btn-primary flex-1">
-              <Send size={14} /> {loading ? 'Sending…' : 'Send'}
+            <button type="submit" disabled={loading || scheduling} className="btn-primary flex-1">
+              {loading ? 'Sending…' : scheduling ? 'Scheduling…' : showSchedule && sendAt
+                ? <><Clock size={14} /> Schedule</>
+                : <><Send size={14} /> Send</>
+              }
             </button>
           </div>
         </form>
@@ -60,13 +101,26 @@ function EmailCard({ email, onDelete }) {
   const [sent, setSent]             = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [replyError, setReplyError] = useState('')
+  const [downloading, setDownloading] = useState(null)
 
-  const from    = email.from_name || email.from_email || email.from || ''
-  const date    = email.received_at || email.date
-  const isRead  = email.is_read ?? email.read ?? true
-  const summary = email.ai_summary || email.body || email.snippet || ''
-  const urgent  = email.urgency === 'urgent'
-  const msgId   = email.gmail_message_id || email.id
+  const from        = email.from_name || email.from_email || email.from || ''
+  const date        = email.received_at || email.date
+  const isRead      = email.is_read ?? email.read ?? true
+  const summary     = email.ai_summary || email.body || email.snippet || ''
+  const urgent      = email.urgency === 'urgent'
+  const msgId       = email.gmail_message_id || email.id
+  const attachments = email.attachments || []
+
+  const downloadAttachment = async (att) => {
+    setDownloading(att.attachmentId)
+    try {
+      const res = await client.get(`/email/${msgId}/attachment/${att.attachmentId}`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a   = document.createElement('a')
+      a.href = url; a.download = att.filename; a.click()
+      URL.revokeObjectURL(url)
+    } catch {} finally { setDownloading(null) }
+  }
 
   const toggleExpand = () => {
     const next = !expanded
@@ -149,6 +203,24 @@ function EmailCard({ email, onDelete }) {
           <p className="text-sm text-[var(--fg)] leading-relaxed">
             {summary || <span className="italic text-[var(--fg-dim)]">No summary available</span>}
           </p>
+          {attachments.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-[var(--fg-dim)] uppercase tracking-widest">Attachments</p>
+              <div className="flex flex-wrap gap-1.5">
+                {attachments.map((att, i) => (
+                  <button
+                    key={i}
+                    onClick={() => downloadAttachment(att)}
+                    disabled={downloading === att.attachmentId}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)] text-xs text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-[var(--border-strong)] transition-colors disabled:opacity-50"
+                  >
+                    <Paperclip size={11} />
+                    {downloading === att.attachmentId ? 'Downloading…' : att.filename}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {sent ? (
             <p className="text-xs text-[var(--fg-muted)]">Reply sent.</p>
           ) : draft ? (
@@ -181,32 +253,43 @@ function EmailCard({ email, onDelete }) {
 export default function Email() {
   const [emails, setEmails]             = useState([])
   const [contacts, setContacts]         = useState([])
+  const [scheduled, setScheduled]       = useState([])
   const [loading, setLoading]           = useState(true)
   const [compose, setCompose]           = useState(false)
   const [needsConnect, setNeedsConnect] = useState(false)
   const [searchQuery, setSearchQuery]   = useState('')
   const [searchResults, setSearchResults] = useState(null)
   const [searching, setSearching]       = useState(false)
+  const [cancellingId, setCancellingId] = useState(null)
   const searchTimer                     = useRef(null)
   const lastLoadAt                      = useRef(0)
 
   const load = async (force = false) => {
-    // Debounce focus-triggered reloads — email inbox is slow (AI summaries)
     if (!force && Date.now() - lastLoadAt.current < 2 * 60 * 1000) return
     lastLoadAt.current = Date.now()
     setLoading(true)
     try {
-      const [emailRes, contactRes] = await Promise.allSettled([
+      const [emailRes, contactRes, scheduledRes] = await Promise.allSettled([
         client.get('/email/inbox?limit=50'),
         client.get('/contacts'),
+        client.get('/email/scheduled'),
       ])
       if (emailRes.status === 'fulfilled') {
         setEmails(emailRes.value.data?.emails || [])
       } else if (emailRes.reason?.response?.status === 403) {
         setNeedsConnect(true)
       }
-      if (contactRes.status === 'fulfilled') setContacts(contactRes.value.data?.contacts || [])
+      if (contactRes.status   === 'fulfilled') setContacts(contactRes.value.data?.contacts || [])
+      if (scheduledRes.status === 'fulfilled') setScheduled(scheduledRes.value.data?.emails || [])
     } finally { setLoading(false) }
+  }
+
+  const cancelScheduled = async (id) => {
+    setCancellingId(id)
+    try {
+      await client.delete(`/email/scheduled/${id}`)
+      setScheduled(prev => prev.filter(s => s.id !== id))
+    } catch {} finally { setCancellingId(null) }
   }
 
   const handleSearch = (q) => {
@@ -318,6 +401,33 @@ export default function Email() {
                 setEmails(prev => prev.filter(x => (x.gmail_message_id || x.id) !== id))
               }}
             />
+          ))}
+        </div>
+      )}
+
+      {scheduled.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-[var(--fg-dim)] uppercase tracking-widest px-1 flex items-center gap-1.5">
+            <Clock size={11} /> Scheduled ({scheduled.length})
+          </p>
+          {scheduled.map(s => (
+            <div key={s.id} className="card p-3 flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--fg)] truncate">{s.subject || '(No subject)'}</p>
+                <p className="text-xs text-[var(--fg-muted)] truncate">To: {s.to}</p>
+                <p className="text-xs text-[var(--fg-dim)] mt-0.5 flex items-center gap-1">
+                  <Clock size={10} />
+                  {new Date(s.send_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+              </div>
+              <button
+                onClick={() => cancelScheduled(s.id)}
+                disabled={cancellingId === s.id}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-[var(--error-subtle)] text-[var(--fg-dim)] hover:text-[var(--error)] transition-colors disabled:opacity-40"
+              >
+                <X size={13} />
+              </button>
+            </div>
           ))}
         </div>
       )}

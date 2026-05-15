@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus, Clock, PhoneCall, Video, MessageSquare, CalendarCheck } from 'lucide-react'
+import { Search, Trash2, Pencil, User, Mail, Phone, Building2, FileText, Star, X, Plus, Clock, PhoneCall, Video, MessageSquare, CalendarCheck, Cake } from 'lucide-react'
 import client from '@/lib/api'
 
 const Portal = ({ children }) =>
@@ -18,13 +18,14 @@ const whatsappUrl = (phone) => {
 function ContactModal({ contact, onClose, onSave }) {
   const isEdit = !!contact?.id
   const [form, setForm] = useState({
-    name:    contact?.name    || '',
-    email:   contact?.email   || '',
-    phone:   contact?.phone   || '',
-    company: contact?.company || '',
-    notes:   contact?.notes   || '',
-    is_vip:  contact?.is_vip  || false,
-    tags:    contact?.tags    || '',
+    name:     contact?.name     || '',
+    email:    contact?.email    || '',
+    phone:    contact?.phone    || '',
+    company:  contact?.company  || '',
+    notes:    contact?.notes    || '',
+    is_vip:   contact?.is_vip   || false,
+    tags:     contact?.tags     || '',
+    birthday: contact?.birthday || '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
@@ -80,10 +81,13 @@ function ContactModal({ contact, onClose, onSave }) {
               <label className="label">Notes</label>
               <textarea className="input resize-none" rows={3} value={form.notes} onChange={set('notes')} placeholder="Optional notes…" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="label">Tags</label>
-              <input className="input" value={form.tags} onChange={set('tags')} placeholder="work, investor, friend…" />
-              <p className="text-[10px] text-[var(--fg-dim)] mt-1">Comma-separated</p>
+              <input className="input" value={form.tags} onChange={set('tags')} placeholder="work, friend…" />
+            </div>
+            <div>
+              <label className="label">Birthday</label>
+              <input className="input" type="date" value={form.birthday} onChange={set('birthday')} />
             </div>
             <div className="col-span-2 flex items-center gap-2.5">
               <input id="vip" type="checkbox" checked={form.is_vip}
@@ -191,6 +195,22 @@ function ContactDetail({ contact, onClose, onEdit, onDelete, onInteractionLogged
               <span className="text-sm text-[var(--fg)]">{contact.company}</span>
             </div>
           )}
+          {contact.birthday && (() => {
+            const today = new Date()
+            const bd = new Date(contact.birthday + 'T00:00:00')
+            const isToday = bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate()
+            const label = bd.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
+            const year  = contact.birthday.slice(0, 4)
+            const age   = year && year !== '0000' ? ` · ${today.getFullYear() - parseInt(year)} yrs` : ''
+            return (
+              <div className={`flex items-center gap-3 p-3 rounded-xl ${isToday ? 'bg-pink-500/10' : 'bg-[var(--surface-raised)]'}`}>
+                <Cake size={15} className={isToday ? 'text-pink-500 shrink-0' : 'text-[var(--fg-dim)] shrink-0'} />
+                <span className={`text-sm ${isToday ? 'text-pink-500 font-semibold' : 'text-[var(--fg)]'}`}>
+                  {label}{age}{isToday ? ' 🎂 Today!' : ''}
+                </span>
+              </div>
+            )
+          })()}
           {contact.tags && (
             <div className="flex flex-wrap gap-1.5 px-1">
               {contact.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
