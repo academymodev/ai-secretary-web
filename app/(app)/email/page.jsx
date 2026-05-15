@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles, Trash2 } from 'lucide-react'
+import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles, Trash2, Search, X } from 'lucide-react'
 import client, { BASE_URL } from '@/lib/api'
 
 function ComposeModal({ onClose, onSent, contacts }) {
@@ -176,6 +176,10 @@ export default function Email() {
   const [loading, setLoading]           = useState(true)
   const [compose, setCompose]           = useState(false)
   const [needsConnect, setNeedsConnect] = useState(false)
+  const [searchQuery, setSearchQuery]   = useState('')
+  const [searchResults, setSearchResults] = useState(null)
+  const [searching, setSearching]       = useState(false)
+  const searchTimer                     = useRef(null)
   const lastLoadAt                      = useRef(0)
 
   const load = async (force = false) => {
@@ -196,6 +200,21 @@ export default function Email() {
       if (contactRes.status === 'fulfilled') setContacts(contactRes.value.data?.contacts || [])
     } finally { setLoading(false) }
   }
+
+  const handleSearch = (q) => {
+    setSearchQuery(q)
+    clearTimeout(searchTimer.current)
+    if (!q.trim()) { setSearchResults(null); return }
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const { data } = await client.get(`/email/search?q=${encodeURIComponent(q.trim())}`)
+        setSearchResults(data.emails || [])
+      } catch { setSearchResults([]) } finally { setSearching(false) }
+    }, 350)
+  }
+
+  const clearSearch = () => { setSearchQuery(''); setSearchResults(null) }
 
   useEffect(() => {
     load(true)
@@ -232,12 +251,16 @@ export default function Email() {
     </div>
   )
 
+  const displayEmails = searchResults !== null ? searchResults : emails
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--fg)]">Email</h1>
-          <p className="text-sm text-[var(--fg-muted)] mt-0.5">{emails.length} messages</p>
+          <p className="text-sm text-[var(--fg-muted)] mt-0.5">
+            {searchResults !== null ? `${searchResults.length} results` : `${emails.length} messages`}
+          </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setCompose(true)} className="btn-primary">
@@ -246,22 +269,46 @@ export default function Email() {
         </div>
       </div>
 
-      {loading ? (
+      <div className="relative">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fg-dim)] pointer-events-none" />
+        <input
+          className="input pl-9 pr-9"
+          placeholder="Search emails…"
+          value={searchQuery}
+          onChange={e => handleSearch(e.target.value)}
+        />
+        {searchQuery && (
+          <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg-dim)] hover:text-[var(--fg)] transition-colors">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {loading && searchResults === null ? (
         <div className="space-y-2">
           {[1,2,3].map(i => <div key={i} className="h-[60px] rounded-2xl skeleton" />)}
         </div>
-      ) : emails.length === 0 ? (
+      ) : searching ? (
+        <div className="space-y-2">
+          {[1,2].map(i => <div key={i} className="h-[60px] rounded-2xl skeleton" />)}
+        </div>
+      ) : displayEmails.length === 0 ? (
         <div className="text-center py-16">
           <Inbox size={36} className="mx-auto mb-3 text-[var(--fg-dim)] opacity-25" />
-          <p className="font-medium text-sm text-[var(--fg)]">Inbox is empty</p>
+          <p className="font-medium text-sm text-[var(--fg)]">
+            {searchResults !== null ? 'No emails match your search' : 'Inbox is empty'}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {emails.map((e, i) => (
+          {displayEmails.map((e, i) => (
             <EmailCard
               key={e.gmail_message_id || e.id || i}
               email={e}
-              onDelete={(id) => setEmails(prev => prev.filter(x => (x.gmail_message_id || x.id) !== id))}
+              onDelete={(id) => {
+                if (searchResults !== null) setSearchResults(prev => prev.filter(x => (x.gmail_message_id || x.id) !== id))
+                setEmails(prev => prev.filter(x => (x.gmail_message_id || x.id) !== id))
+              }}
             />
           ))}
         </div>

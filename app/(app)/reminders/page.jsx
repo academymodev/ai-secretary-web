@@ -1,15 +1,17 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Bell, Plus, Trash2, CheckCircle2, Circle, Clock, BellOff, Pencil } from 'lucide-react'
+import { Bell, Plus, Trash2, CheckCircle2, Circle, Clock, BellOff, Pencil, RefreshCw } from 'lucide-react'
 import client from '@/lib/api'
 
 function ReminderModal({ reminder, onClose, onSave }) {
   const isEdit = !!reminder?.id
+  const existingRecur = reminder?.notes?.match(/\[RECUR:(daily|weekly|monthly)\]/)?.[1] || 'none'
   const [form, setForm] = useState({
     title:    reminder?.title    || '',
     deadline: reminder?.deadline ? reminder.deadline.slice(0, 10) : new Date().toISOString().slice(0, 10),
     time:     reminder?.notes?.match(/\[TIME:([\d:]+)\]/)?.[1] || '',
     priority: reminder?.priority || 'medium',
+    recur:    existingRecur,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
@@ -24,7 +26,10 @@ function ReminderModal({ reminder, onClose, onSave }) {
     setError('')
     setLoading(true)
     try {
-      const notes   = form.time ? `[TIME:${form.time}]` : null
+      const parts = []
+      if (form.time)              parts.push(`[TIME:${form.time}]`)
+      if (form.recur !== 'none')  parts.push(`[RECUR:${form.recur}]`)
+      const notes   = parts.length ? parts.join(' ') : null
       const payload = { title: form.title, deadline: form.deadline, priority: form.priority, notes }
       if (isEdit) await client.put(`/tasks/${reminder.id}`, payload)
       else        await client.post('/tasks', payload)
@@ -67,6 +72,15 @@ function ReminderModal({ reminder, onClose, onSave }) {
               <option value="high">High</option>
             </select>
           </div>
+          <div>
+            <label className="label">Repeat</label>
+            <select className="input" value={form.recur} onChange={set('recur')}>
+              <option value="none">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={loading} className="btn-primary flex-1">
@@ -103,6 +117,7 @@ function ConfirmDialog({ onConfirm, onCancel }) {
 
 function ReminderCard({ reminder, onToggle, onEdit, onDelete }) {
   const time      = reminder.notes?.match(/\[TIME:([\d:]+)\]/)?.[1]
+  const recur     = reminder.notes?.match(/\[RECUR:(daily|weekly|monthly)\]/)?.[1]
   const deadline  = reminder.deadline
   const today     = new Date().toISOString().slice(0, 10)
   const isToday   = deadline === today
@@ -124,9 +139,16 @@ function ReminderCard({ reminder, onToggle, onEdit, onDelete }) {
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${isDone ? 'line-through text-[var(--fg-dim)]' : 'text-[var(--fg)]'}`}>
-          {reminder.title}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={`text-sm font-medium ${isDone ? 'line-through text-[var(--fg-dim)]' : 'text-[var(--fg)]'}`}>
+            {reminder.title}
+          </p>
+          {recur && !isDone && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)]">
+              <RefreshCw size={9} /> {recur}
+            </span>
+          )}
+        </div>
         {(deadline || time) && (
           <div className="flex items-center gap-1.5 mt-1">
             <Clock size={11} className={isOverdue ? 'text-[var(--error)]' : 'text-[var(--fg-dim)]'} />
