@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, User, Trash2 } from 'lucide-react'
+import { Send, User, Trash2, Mic, MicOff } from 'lucide-react'
 import client from '@/lib/api'
 import { marked } from 'marked'
 import DOMPurify from 'isomorphic-dompurify'
@@ -70,8 +70,12 @@ export default function Chat() {
   const [loading, setLoading]         = useState(false)
   const [histLoading, setHistLoading] = useState(true)
   const [showClear, setShowClear]     = useState(false)
+  const [recording, setRecording]     = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const bottomRef                     = useRef(null)
   const inputRef                      = useRef(null)
+  const mediaRecorderRef              = useRef(null)
+  const chunksRef                     = useRef([])
 
   useEffect(() => {
     client.get('/chat/history')
@@ -109,6 +113,43 @@ export default function Chat() {
     setMessages([])
     setShowClear(false)
   }
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr     = new MediaRecorder(stream)
+      chunksRef.current = []
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' })
+        setTranscribing(true)
+        try {
+          const fd = new FormData()
+          fd.append('audio', blob, 'recording.webm')
+          const { data } = await client.post('/voice/transcribe', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          if (data.text) {
+            setInput(prev => prev ? prev + ' ' + data.text : data.text)
+            inputRef.current?.focus()
+          }
+        } catch {} finally { setTranscribing(false) }
+      }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setRecording(true)
+    } catch {}
+  }
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop()
+    mediaRecorderRef.current = null
+    setRecording(false)
+  }
+
+  const toggleRecording = () => recording ? stopRecording() : startRecording()
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 7rem)' }}>
@@ -168,13 +209,26 @@ export default function Chat() {
 
       {/* Input */}
       <div className="flex gap-2">
+        <button
+          onClick={toggleRecording}
+          disabled={transcribing}
+          aria-label={recording ? 'Stop recording' : 'Start voice input'}
+          className={`px-3 rounded-xl border transition-all ${
+            recording
+              ? 'bg-[var(--error)] border-[var(--error)] text-white animate-pulse'
+              : 'border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-[var(--border-strong)]'
+          } disabled:opacity-40`}
+        >
+          {recording ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
         <input
           ref={inputRef}
           className="input flex-1"
-          placeholder="Ask anything…"
+          placeholder={transcribing ? 'Transcribing…' : recording ? 'Recording… click mic to stop' : 'Ask anything…'}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+          disabled={transcribing}
         />
         <button
           onClick={send}

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles } from 'lucide-react'
+import { Mail, Send, ChevronDown, ChevronUp, Inbox, Sparkles, Trash2 } from 'lucide-react'
 import client, { BASE_URL } from '@/lib/api'
 
 function ComposeModal({ onClose, onSent, contacts }) {
@@ -52,12 +52,13 @@ function ComposeModal({ onClose, onSent, contacts }) {
   )
 }
 
-function EmailCard({ email }) {
+function EmailCard({ email, onDelete }) {
   const [expanded, setExpanded]     = useState(false)
   const [draft, setDraft]           = useState('')
   const [drafting, setDrafting]     = useState(false)
   const [sending, setSending]       = useState(false)
   const [sent, setSent]             = useState(false)
+  const [deleting, setDeleting]     = useState(false)
   const [replyError, setReplyError] = useState('')
 
   const from    = email.from_name || email.from_email || email.from || ''
@@ -65,17 +66,28 @@ function EmailCard({ email }) {
   const isRead  = email.is_read ?? email.read ?? true
   const summary = email.ai_summary || email.body || email.snippet || ''
   const urgent  = email.urgency === 'urgent'
+  const msgId   = email.gmail_message_id || email.id
 
   const generateReply = async () => {
     setDrafting(true)
     setReplyError('')
     setDraft('')
     try {
-      const { data } = await client.post('/email/draft-reply', { emailId: email.id })
+      const { data } = await client.post('/email/draft-reply', { emailId: msgId })
       setDraft(data.draft || data.body || '')
     } catch (err) {
       setReplyError(err.response?.data?.error || 'Failed to generate reply')
     } finally { setDrafting(false) }
+  }
+
+  const handleDelete = async (e) => {
+    e.stopPropagation()
+    if (!confirm('Move this email to trash?')) return
+    setDeleting(true)
+    try {
+      await client.delete(`/email/${msgId}`)
+      onDelete(msgId)
+    } catch { setDeleting(false) }
   }
 
   const sendReply = async () => {
@@ -112,6 +124,13 @@ function EmailCard({ email }) {
             )}
             {urgent && <span className="badge badge-muted text-[10px]">Urgent</span>}
             {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-[var(--fg)] shrink-0" />}
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="p-1 rounded-lg hover:bg-[var(--error-subtle)] text-[var(--fg-dim)] hover:text-[var(--error)] transition-colors disabled:opacity-40"
+            >
+              <Trash2 size={13} />
+            </button>
             {expanded ? <ChevronUp size={14} className="text-[var(--fg-dim)]" /> : <ChevronDown size={14} className="text-[var(--fg-dim)]" />}
           </div>
         </div>
@@ -238,7 +257,13 @@ export default function Email() {
         </div>
       ) : (
         <div className="space-y-2">
-          {emails.map((e, i) => <EmailCard key={e.id || i} email={e} />)}
+          {emails.map((e, i) => (
+            <EmailCard
+              key={e.gmail_message_id || e.id || i}
+              email={e}
+              onDelete={(id) => setEmails(prev => prev.filter(x => (x.gmail_message_id || x.id) !== id))}
+            />
+          ))}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save } from 'lucide-react'
+import { Sun, Moon, Monitor, LogOut, CheckCircle2, ExternalLink, ChevronRight, RefreshCw, Save, Download, Trash2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useRouter } from 'next/navigation'
@@ -42,6 +42,8 @@ export default function SettingsPage() {
   const { theme, changeTheme }    = useTheme()
   const router                    = useRouter()
   const [showLogout, setShowLogout]           = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deletingAccount, setDeletingAccount]     = useState(false)
   const [googleConnected, setGoogleConnected] = useState(user?.google_connected || false)
   const [checking, setChecking]               = useState(false)
   const [profile, setProfile]             = useState({ name: user?.name || '', briefing_time: '06:55', language: 'english', mode: 'professional' })
@@ -94,6 +96,26 @@ export default function SettingsPage() {
 
   const handleLogout = () => { logout(); router.push('/login') }
 
+  const exportData = async () => {
+    try {
+      const { data } = await client.get('/auth/export')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url; a.download = 'my-data-export.json'; a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }
+
+  const deleteAccount = async () => {
+    setDeletingAccount(true)
+    try {
+      await client.delete('/auth/account')
+      logout()
+      router.push('/login')
+    } catch { setDeletingAccount(false); setShowDeleteAccount(false) }
+  }
+
   return (
     <div className="space-y-4">
       <div className="pt-1">
@@ -120,6 +142,17 @@ export default function SettingsPage() {
           <RowField label="Briefing Time">
             <input className="input" type="time" value={profile.briefing_time}
               onChange={e => setProfile(p => ({ ...p, briefing_time: e.target.value }))} />
+          </RowField>
+          <RowField label="Language">
+            <select className="input" value={profile.language}
+              onChange={e => setProfile(p => ({ ...p, language: e.target.value }))}>
+              {[
+                ['english','English'],['hindi','Hindi'],['tamil','Tamil'],['telugu','Telugu'],
+                ['kannada','Kannada'],['malayalam','Malayalam'],['bengali','Bengali'],
+                ['marathi','Marathi'],['spanish','Spanish'],['french','French'],
+                ['german','German'],['arabic','Arabic'],
+              ].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </RowField>
           <RowField label="AI Mode">
             <select className="input" value={profile.mode}
@@ -215,12 +248,53 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <Section title="Data & Privacy">
+        <div className="space-y-2">
+          <button
+            onClick={exportData}
+            className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-[var(--surface-raised)] transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2 text-[var(--fg-muted)]"><Download size={15} /> Export my data</span>
+            <ChevronRight size={14} className="text-[var(--fg-dim)]" />
+          </button>
+          <button
+            onClick={() => setShowDeleteAccount(true)}
+            className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-[var(--error-subtle)] transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2 text-[var(--error)]"><Trash2 size={15} /> Delete account</span>
+            <ChevronRight size={14} className="text-[var(--error)] opacity-60" />
+          </button>
+        </div>
+      </Section>
+
       <button
         onClick={() => setShowLogout(true)}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-[var(--border)] text-[var(--fg-muted)] text-sm font-medium hover:border-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--error-subtle)] transition-all duration-200"
       >
         <LogOut size={15} /> Sign Out
       </button>
+
+      {showDeleteAccount && (
+        <div className="overlay">
+          <div className="modal max-w-xs text-center">
+            <div className="w-10 h-10 rounded-full bg-[var(--error-subtle)] flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={18} className="text-[var(--error)]" />
+            </div>
+            <h2 className="font-semibold text-sm mb-1 text-[var(--fg)]">Delete account?</h2>
+            <p className="text-xs text-[var(--fg-muted)] mb-5 leading-relaxed">All your data will be permanently erased. This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowDeleteAccount(false)} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
+              <button
+                onClick={deleteAccount}
+                disabled={deletingAccount}
+                className="flex-1 py-2 rounded-full font-semibold text-sm bg-[var(--error)] text-white hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-60"
+              >
+                {deletingAccount ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLogout && (
         <div className="overlay">

@@ -1,12 +1,20 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import client from '@/lib/api'
 
-function EventModal({ onClose, onSave }) {
-  const [form, setForm]       = useState({ title: '', start_time: '', end_time: '', location: '', description: '' })
+function EventModal({ onClose, onSave, editEvent = null }) {
+  const toLocal = (iso) => iso ? new Date(new Date(iso) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : ''
+  const [form, setForm]       = useState({
+    title:       editEvent?.title       || '',
+    start_time:  toLocal(editEvent?.start_time) || '',
+    end_time:    toLocal(editEvent?.end_time)   || '',
+    location:    editEvent?.location    || '',
+    description: editEvent?.description || '',
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const isEdit = !!editEvent
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -16,17 +24,21 @@ function EventModal({ onClose, onSave }) {
     if (form.end_time && form.end_time < form.start_time) return setError('End time must be after start time')
     setLoading(true)
     try {
-      await client.post('/calendar/events', form)
+      if (isEdit) {
+        await client.put(`/calendar/events/${editEvent.id}`, form)
+      } else {
+        await client.post('/calendar/events', form)
+      }
       onSave()
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create event')
+      setError(err.response?.data?.error || `Failed to ${isEdit ? 'update' : 'create'} event`)
     } finally { setLoading(false) }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="card w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold mb-4">New Event</h2>
+        <h2 className="text-lg font-semibold mb-4">{isEdit ? 'Edit Event' : 'New Event'}</h2>
         <form onSubmit={submit} className="space-y-3">
           {error && <p className="text-sm text-danger bg-danger-subtle px-3 py-2 rounded-lg">{error}</p>}
           <div>
@@ -53,7 +65,9 @@ function EventModal({ onClose, onSave }) {
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={loading} className="btn-primary flex-1">{loading ? 'Creating…' : 'Create'}</button>
+            <button type="submit" disabled={loading} className="btn-primary flex-1">
+              {loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create')}
+            </button>
           </div>
         </form>
       </div>
@@ -61,7 +75,7 @@ function EventModal({ onClose, onSave }) {
   )
 }
 
-function EventCard({ event, onDelete }) {
+function EventCard({ event, onDelete, onEdit }) {
   const start = event.start_time ? new Date(event.start_time) : null
   const end   = event.end_time   ? new Date(event.end_time)   : null
 
@@ -87,9 +101,14 @@ function EventCard({ event, onDelete }) {
         )}
         {event.description && <p className="text-xs text-fg-dim mt-1 truncate">{event.description}</p>}
       </div>
-      <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
-        <Trash2 size={15} />
-      </button>
+      <div className="flex gap-1">
+        <button onClick={() => onEdit(event)} className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim hover:text-fg transition-colors">
+          <Pencil size={14} />
+        </button>
+        <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
+          <Trash2 size={15} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -190,6 +209,7 @@ export default function CalendarPage() {
   const [events, setEvents]             = useState([])
   const [loading, setLoading]           = useState(true)
   const [modal, setModal]               = useState(false)
+  const [editEvent, setEditEvent]       = useState(null)
   const [needsConnect, setNeedsConnect] = useState(false)
   const [selectedDate, setSelectedDate] = useState(null)
 
@@ -288,13 +308,22 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {listEvents.map((e, i) => <EventCard key={e.id || i} event={e} onDelete={del} />)}
+              {listEvents.map((e, i) => (
+                <EventCard key={e.id || i} event={e} onDelete={del} onEdit={(ev) => setEditEvent(ev)} />
+              ))}
             </div>
           )}
         </>
       )}
 
       {modal && <EventModal onClose={() => setModal(false)} onSave={() => { setModal(false); load() }} />}
+      {editEvent && (
+        <EventModal
+          editEvent={editEvent}
+          onClose={() => setEditEvent(null)}
+          onSave={() => { setEditEvent(null); load() }}
+        />
+      )}
     </div>
   )
 }
