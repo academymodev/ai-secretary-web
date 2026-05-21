@@ -22,7 +22,17 @@ const securityHeaders = [
   { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=()' },
 ]
 
+const BACKEND = 'https://pers-ruxy.onrender.com'
+
 const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source:      '/api/:path*',
+        destination: `${BACKEND}/:path*`,
+      },
+    ]
+  },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },

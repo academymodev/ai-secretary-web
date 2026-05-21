@@ -77,7 +77,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const apiError = (e, fallback) => e.response?.data?.error || fallback
+  const apiError = (e, fallback) =>
+    e.response?.data?.error || e.response?.data?.message || fallback
 
   const login = async (email, password) => {
     setLoading(true)
@@ -133,6 +134,25 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const loginWithGoogle = async (accessToken) => {
+    setLoading(true)
+    setLoginHint('')
+    try {
+      const { data } = await postWithRetry(
+        '/auth/google-mobile',
+        { access_token: accessToken },
+        () => setLoginHint('Server is waking up, please wait (~30 seconds)…')
+      )
+      saveSession(data.token, { name: data.user.name, email: data.user.email })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: apiError(e, 'Google sign-in failed. Please try again.') }
+    } finally {
+      setLoading(false)
+      setLoginHint('')
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -141,7 +161,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, initialized, loading, loginHint, login, sendSignupOtp, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, initialized, loading, loginHint, login, loginWithGoogle, sendSignupOtp, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )
@@ -150,5 +170,5 @@ export function AuthProvider({ children }) {
 export const useAuth = () =>
   useContext(AuthContext) ?? {
     user: null, token: null, initialized: false, loading: false, loginHint: '',
-    login: async () => ({}), signup: async () => ({}), logout: () => {},
+    login: async () => ({}), loginWithGoogle: async () => ({}), signup: async () => ({}), logout: () => {},
   }
