@@ -50,6 +50,7 @@ function TaskModal({ task, onClose, onSave }) {
     notes:    task?.notes    || '',
     priority: task?.priority || 'medium',
     deadline: task?.deadline ? task.deadline.slice(0, 10) : '',
+    time:     task?.time     || '',
     category: task?.category || '',
   })
   const [loading, setLoading]  = useState(false)
@@ -106,6 +107,10 @@ function TaskModal({ task, onClose, onSave }) {
               <label className="label">Deadline</label>
               <input className="input" type="date" value={form.deadline} onChange={set('deadline')} />
             </div>
+          </div>
+          <div>
+            <label className="label">Time <span className="text-[var(--fg-dim)] font-normal">(optional)</span></label>
+            <input className="input" type="time" value={form.time} onChange={set('time')} />
           </div>
           <div>
             <label className="label">Category</label>
@@ -188,6 +193,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete, isToggling }) {
               <span className={`text-[11px] flex items-center gap-1 ${isOverdue ? 'text-[var(--error)]' : 'text-[var(--fg-dim)]'}`}>
                 {isOverdue && <AlertCircle size={11} />}
                 {new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                {task.time && <span>@ {task.time}</span>}
               </span>
             )}
             {catColor && (

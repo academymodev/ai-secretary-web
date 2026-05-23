@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, User, Trash2, Mic, MicOff, Search, X } from 'lucide-react'
+import { Send, User, Trash2, Mic, MicOff, Search, X, MessageCircle, Phone, MessagesSquare } from 'lucide-react'
 import client from '@/lib/api'
 import { marked } from 'marked'
 import DOMPurify from 'isomorphic-dompurify'
@@ -41,6 +41,44 @@ function Message({ msg }) {
   )
 }
 
+function ActionBanner({ actions }) {
+  if (!actions?.length) return null
+  return (
+    <div className="flex flex-wrap gap-2 mt-2 pl-9">
+      {actions.map((action, i) => {
+        if (action.action === 'open_whatsapp') {
+          const phone = action.phone?.replace(/^\+/, '') || ''
+          const href  = `https://wa.me/${phone}?text=${encodeURIComponent(action.message || '')}`
+          return (
+            <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors border border-green-500/20">
+              <MessageCircle size={12} /> WhatsApp {action.phone}
+            </a>
+          )
+        }
+        if (action.action === 'open_sms') {
+          const href = `sms:${action.phone}?body=${encodeURIComponent(action.message || '')}`
+          return (
+            <a key={i} href={href}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors border border-blue-500/20">
+              <Phone size={12} /> SMS {action.phone}
+            </a>
+          )
+        }
+        if (action.action === 'open_messenger') {
+          return (
+            <a key={i} href="https://www.messenger.com" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20">
+              <MessagesSquare size={12} /> Open Messenger
+            </a>
+          )
+        }
+        return null
+      })}
+    </div>
+  )
+}
+
 function ClearDialog({ onConfirm, onCancel }) {
   return (
     <div className="overlay">
@@ -76,6 +114,7 @@ export default function Chat() {
   const [searchResults, setSearchResults] = useState(null)
   const [searching, setSearching]     = useState(false)
   const [showSearch, setShowSearch]   = useState(false)
+  const [lastActions, setLastActions] = useState([])
   const bottomRef                     = useRef(null)
   const inputRef                      = useRef(null)
   const searchTimerRef                = useRef(null)
@@ -100,6 +139,7 @@ export default function Chat() {
     setMessages(m => [...m, userMsg])
     setInput('')
     setLoading(true)
+    setLastActions([])
     inputRef.current?.focus()
     try {
       const allMsgs  = [...messages, userMsg]
@@ -107,6 +147,7 @@ export default function Chat() {
         messages: allMsgs.map(m => ({ role: m.role, content: m.content }))
       })
       setMessages(m => [...m, { role: 'assistant', content: data.reply }])
+      if (data.actions?.length) setLastActions(data.actions)
     } catch (err) {
       const msg = err.response?.data?.error || 'Sorry, something went wrong.'
       setMessages(m => [...m, { role: 'assistant', content: msg }])
@@ -271,6 +312,7 @@ export default function Chat() {
             </div>
           </div>
         )}
+        {!showSearch && lastActions.length > 0 && <ActionBanner actions={lastActions} />}
         <div ref={bottomRef} />
       </div>
 

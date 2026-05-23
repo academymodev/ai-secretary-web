@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Plus, Trash2, Pencil, Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Plus, Trash2, Pencil, Calendar, MapPin, Clock, ChevronLeft, ChevronRight, Video, Users, FileText, X } from 'lucide-react'
 import client from '@/lib/api'
 
 function EventModal({ onClose, onSave, editEvent = null }) {
@@ -75,41 +75,104 @@ function EventModal({ onClose, onSave, editEvent = null }) {
   )
 }
 
-function EventCard({ event, onDelete, onEdit }) {
-  const start = event.start_time ? new Date(event.start_time) : null
-  const end   = event.end_time   ? new Date(event.end_time)   : null
+function BriefModal({ eventId, onClose }) {
+  const [content, setContent] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    client.get(`/calendar/events/${eventId}/brief`)
+      .then(({ data }) => setContent(data.brief?.content || ''))
+      .catch(() => setError('Could not load brief'))
+      .finally(() => setLoading(false))
+  }, [eventId])
 
   return (
-    <div className="card p-4 flex items-start gap-3">
-      <div className="w-12 shrink-0 text-center">
-        <p className="text-lg font-bold text-fg">{start ? start.getDate() : '—'}</p>
-        <p className="text-xs text-fg-muted uppercase">{start ? start.toLocaleString('default', { month: 'short' }) : ''}</p>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm">{event.title || event.summary}</p>
-        {start && (
-          <p className="text-xs text-fg-muted flex items-center gap-1 mt-1">
-            <Clock size={11} />
-            {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            {end && ` – ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-          </p>
-        )}
-        {event.location && (
-          <p className="text-xs text-fg-muted flex items-center gap-1 mt-0.5">
-            <MapPin size={11} /> {event.location}
-          </p>
-        )}
-        {event.description && <p className="text-xs text-fg-dim mt-1 truncate">{event.description}</p>}
-      </div>
-      <div className="flex gap-1">
-        <button onClick={() => onEdit(event)} className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim hover:text-fg transition-colors">
-          <Pencil size={14} />
-        </button>
-        <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
-          <Trash2 size={15} />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="card w-full max-w-lg p-6 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold">Meeting Brief</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim hover:text-fg transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-4 rounded skeleton" />)}</div>
+          ) : error ? (
+            <p className="text-sm text-[var(--error)]">{error}</p>
+          ) : (
+            <p className="text-sm text-fg leading-relaxed whitespace-pre-wrap">{content}</p>
+          )}
+        </div>
       </div>
     </div>
+  )
+}
+
+function EventCard({ event, onDelete, onEdit }) {
+  const [showBrief, setShowBrief] = useState(false)
+  const start = event.start_time ? new Date(event.start_time) : null
+  const end   = event.end_time   ? new Date(event.end_time)   : null
+  const attendees = Array.isArray(event.attendees) ? event.attendees : []
+
+  return (
+    <>
+      <div className="card p-4 flex items-start gap-3">
+        <div className="w-12 shrink-0 text-center">
+          <p className="text-lg font-bold text-fg">{start ? start.getDate() : '—'}</p>
+          <p className="text-xs text-fg-muted uppercase">{start ? start.toLocaleString('default', { month: 'short' }) : ''}</p>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm">{event.title || event.summary}</p>
+          {start && (
+            <p className="text-xs text-fg-muted flex items-center gap-1 mt-1">
+              <Clock size={11} />
+              {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {end && ` – ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+            </p>
+          )}
+          {event.location && (
+            <p className="text-xs text-fg-muted flex items-center gap-1 mt-0.5">
+              <MapPin size={11} /> {event.location}
+            </p>
+          )}
+          {event.description && <p className="text-xs text-fg-dim mt-1 truncate">{event.description}</p>}
+          {attendees.length > 0 && (
+            <p className="text-xs text-fg-dim flex items-center gap-1 mt-0.5">
+              <Users size={11} /> {attendees.length} attendee{attendees.length > 1 ? 's' : ''}
+            </p>
+          )}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {event.join_url && (
+              <a
+                href={event.join_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+              >
+                <Video size={11} /> Join {event.conference_type || 'Meeting'}
+              </a>
+            )}
+            <button
+              onClick={() => setShowBrief(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--surface-raised)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg)] transition-colors border border-[var(--border)]"
+            >
+              <FileText size={11} /> Brief
+            </button>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => onEdit(event)} className="p-1.5 rounded-lg hover:bg-surface-raised text-fg-dim hover:text-fg transition-colors">
+            <Pencil size={14} />
+          </button>
+          <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg hover:bg-danger-subtle text-fg-dim hover:text-danger transition-colors">
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+      {showBrief && <BriefModal eventId={event.id} onClose={() => setShowBrief(false)} />}
+    </>
   )
 }
 
