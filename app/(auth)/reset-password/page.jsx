@@ -1,12 +1,14 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import client from '@/lib/api'
 
 export default function ResetPassword() {
   const router              = useRouter()
+  const searchParams        = useSearchParams()
+  const emailFromUrl        = searchParams.get('email') || ''
   const [form, setForm]     = useState({ otp: '', password: '', confirm: '' })
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -17,10 +19,11 @@ export default function ResetPassword() {
   const submit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!emailFromUrl) return setError('Email address missing — please go back and restart the reset flow')
     if (form.password !== form.confirm) return setError('Passwords do not match')
     setLoading(true)
     try {
-      await client.post('/auth/reset-password', { otp: form.otp, newPassword: form.password })
+      await client.post('/auth/reset-password', { email: emailFromUrl, otp: form.otp, newPassword: form.password })
       router.push('/login')
     } catch (err) {
       setError(err.response?.data?.error || 'Reset failed')

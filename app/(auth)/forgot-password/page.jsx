@@ -30,7 +30,7 @@ export default function ForgotPassword() {
         <div className="text-5xl mb-4">📧</div>
         <h2 className="text-xl font-bold mb-2">Check your email</h2>
         <p className="text-fg-muted text-sm mb-6">We sent a 6-digit reset code to <strong>{email}</strong>. It expires in 15 minutes.</p>
-        <button className="btn-primary w-full" onClick={() => router.push('/reset-password')}>
+        <button className="btn-primary w-full" onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}>
           Enter Reset Code
         </button>
         <button onClick={() => setSent(false)} className="mt-3 text-sm text-fg-muted hover:underline">Resend code</button>
