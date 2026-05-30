@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import client from '@/lib/api'
 
-export default function ResetPassword() {
+function ResetPasswordForm() {
   const router              = useRouter()
   const searchParams        = useSearchParams()
   const emailFromUrl        = searchParams.get('email') || ''
@@ -64,5 +64,13 @@ export default function ResetPassword() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function ResetPassword() {
+  return (
+    <Suspense>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }
